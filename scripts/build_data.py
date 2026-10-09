@@ -4,11 +4,16 @@ Sources (in raw/):
   osm_places.json       Overpass export: suburb/neighbourhood/quarter nodes, used to name areas
   parks_under_bbmp.kml  BBMP park list with timings (OpenCity, data.opencity.in/dataset/bbmp-parks)
   osm.json              Overpass export: parks, playgrounds, lakes, libraries, toilets (OpenStreetMap, ODbL)
+  bbmp_parks_2016.csv   BBMP Parks 2016 (OpenCity, data.opencity.in/dataset/bangalore-parks-and-playgrounds)
+  osm_park_shapes.json  Overpass export: park, garden and playground shapes, used to check 2016 points
+                        (fetch with scripts/fetch_park_shapes.py)
 
 Any later source (for example Google data) must produce records in the same
 shape as make_place() and be appended in main() before dedupe.
 
 Run: python -I scripts/build_data.py   (from W:/apps/publik)
+     python -I scripts/build_data.py --append-2016   (adds only the 2016 parks to the current
+     places.json; use it on a machine without raw/google.json, so Google data is kept)
 """
 import html
 import json
@@ -421,6 +426,100 @@ def test_parser():
         print("  not parsed:", repr(v))
 
 
+def load_park_shapes():
+    """OSM park shapes as (way id or None, ring) with a coarse grid index."""
+    path = RAW / "osm_park_shapes.json"
+    if not path.exists():
+        return None
+    shapes = []
+    for e in json.loads(path.read_text(encoding="utf-8"))["elements"]:
+        if e["type"] == "way" and "geometry" in e:
+            shapes.append((f"osm-w{e['id']}", [(g["lat"], g["lon"]) for g in e["geometry"]]))
+        elif e["type"] == "relation":
+            for m in e.get("members", []):
+                if m.get("role") == "outer" and "geometry" in m:
+                    shapes.append((f"osm-r{e['id']}", [(g["lat"], g["lon"]) for g in m["geometry"]]))
+    grid = {}
+    for i, (_, ring) in enumerate(shapes):
+        las = [a for a, _ in ring]
+        los = [b for _, b in ring]
+        for x in range(int(min(las) / 0.01) - 1, int(max(las) / 0.01) + 2):
+            for y in range(int(min(los) / 0.01) - 1, int(max(los) / 0.01) + 2):
+                grid.setdefault((x, y), []).append(i)
+    return shapes, grid
+
+
+def _inside(lat, lng, ring):
+    c = False
+    for (y1, x1), (y2, x2) in zip(ring, ring[1:] + ring[:1]):
+        if (y1 > lat) != (y2 > lat) and lng < (x2 - x1) * (lat - y1) / (y2 - y1 + 1e-15) + x1:
+            c = not c
+    return c
+
+
+def _edge_m(lat, lng, ring):
+    k, cy = 111_320, math.cos(math.radians(lat))
+    best = float("inf")
+    for (a1, b1), (a2, b2) in zip(ring, ring[1:] + ring[:1]):
+        ax, ay, bx, by = b1 * k * cy, a1 * k, b2 * k * cy, a2 * k
+        px, py = lng * k * cy, lat * k
+        dx, dy = bx - ax, by - ay
+        t = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy + 1e-9)))
+        best = min(best, math.hypot(px - ax - t * dx, py - ay - t * dy))
+    return best
+
+
+def park_shape_at(lat, lng, index, tol_m=40):
+    """Id of the mapped park the point is in (or within tol_m of), else None."""
+    shapes, grid = index
+    for i in grid.get((int(lat / 0.01), int(lng / 0.01)), []):
+        sid, ring = shapes[i]
+        if _inside(lat, lng, ring) or _edge_m(lat, lng, ring) < tol_m:
+            return sid
+    return None
+
+
+def load_bbmp2016(existing):
+    """BBMP Parks 2016, kept only where the point lands on a mapped park that we do not list yet.
+
+    About 62% of the 2016 points land on a mapped park, close to the 69% of the
+    current BBMP list, so points off any mapped park are left out as unsure.
+    """
+    path = RAW / "bbmp_parks_2016.csv"
+    index = load_park_shapes()
+    if not path.exists() or index is None:
+        print("bbmp 2016: skipped (raw/bbmp_parks_2016.csv or raw/osm_park_shapes.json missing)")
+        return []
+    import csv
+    rows = list(csv.reader(path.open(encoding="utf-8-sig", newline="")))[1:]
+    have_ids = {p["id"] for p in existing}
+    parks = [p for p in existing if p["cat"] in ("park", "playground", "lake")]
+    used, out, off, dup = set(), [], 0, 0
+    for i, r in enumerate(rows):
+        try:
+            lat, lng = float(r[7]), float(r[8])
+        except (ValueError, IndexError):
+            continue
+        sid = park_shape_at(lat, lng, index)
+        if sid is None:
+            off += 1
+            continue
+        probe = {"lat": lat, "lng": lng}
+        if sid in have_ids or sid in used or any(dist_m(p, probe) < 100 for p in parks):
+            dup += 1
+            continue
+        name = clean_park_name(clean(r[6]))
+        if name.lower() in ("bbmp park", "park"):
+            continue
+        used.add(sid)
+        ward = re.sub(r"\s+ward$", "", clean(r[1]), flags=re.I).title() or None
+        sqm = to_float(r[9]) if len(r) > 9 else None
+        out.append(make_place(f"bbmp16-{i}", "park", name, lat, lng, "bbmp16", area=ward,
+                              extra={"sqm": int(sqm)} if sqm else None))
+    print(f"bbmp 2016: {len(rows)} rows, added {len(out)}, off any mapped park {off}, already listed {dup}")
+    return out
+
+
 def merge_google(places):
     """Merge raw/google.json (written by google_hours.py) if it exists.
 
@@ -462,11 +561,26 @@ def merge_photos(places):
     return places
 
 
+def append_2016():
+    """Add the 2016 parks to the existing places.json without a full rebuild."""
+    data = json.loads(OUT.read_text(encoding="utf-8"))
+    places = [p for p in data["places"] if p["src"] != "bbmp16"]
+    new = load_bbmp2016(places)
+    fill_areas(new, load_area_nodes())
+    data["places"] = places + new
+    data["built"] = __import__("datetime").date.today().isoformat()
+    OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print("total", len(data["places"]))
+
+
 def main():
+    if "--append-2016" in sys.argv:
+        return append_2016()
     bbmp = load_bbmp()
     osm = load_osm()
     test_parser()
     places = merge_photos(merge_google(bbmp + dedupe(bbmp, osm)))
+    places += load_bbmp2016(places)
     nodes = load_area_nodes()
     no_area = sum(1 for p in places if not p.get("area"))
     filled = fill_areas(places, nodes)

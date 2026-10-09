@@ -17,7 +17,7 @@
   };
   const KN = { all: "ಎಲ್ಲಾ", park: "ಉದ್ಯಾನ", playground: "ಆಟದ ಮೈದಾನ", lake: "ಕೆರೆ", library: "ಗ್ರಂಥಾಲಯ", toilet: "ಶೌಚಾಲಯ" };
   const CAT_LABEL = { park: "Park", playground: "Playground", lake: "Lake", library: "Library", toilet: "Public toilet" };
-  const SRC_LABEL = { bbmp: "BBMP park list", osm: "OpenStreetMap" };
+  const SRC_LABEL = { bbmp: "BBMP park list", bbmp16: "BBMP park list 2016", osm: "OpenStreetMap" };
 
   const $ = (id) => document.getElementById(id);
   const state = { places: [], cat: "all", q: "", openOnly: false, freeOnly: false, accessOnly: false, here: null, shown: PAGE, sort: "default" };

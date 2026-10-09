@@ -1,4 +1,5 @@
-raw/
+raw/*
+!raw/bbmp_parks_2016.csv
 __pycache__/
 *.pyc
 .wrangler/

@@ -89,3 +89,11 @@ Known data problems:
 - Privacy: the visitor key is a hash of the IP with a random salt that changes every day. Old salts are deleted, and keys are cleared after 24 hours. No raw IPs are stored.
 - On this laptop, `wrangler d1 execute --file` fails behind Zscaler. Use `--command` with the SQL instead.
 
+## Update 2026-10-09 (BBMP 2016 parks)
+
+- Added 281 parks from "BBMP Parks 2016" (OpenCity, data.opencity.in/dataset/bangalore-parks-and-playgrounds, no license stated). Total: 1,886 places.
+- Check: 62% of the 1,272 points in the 2016 file land on or within 40 m of a park mapped in OpenStreetMap, against 69% for the current BBMP list. Only points on a mapped park that PUBLIK does not list yet were added. 478 were off any mapped park, and 513 were already listed.
+- The file is in git (`raw/bbmp_parks_2016.csv`, no phone numbers). The park shapes are not: run `python -I scripts/fetch_park_shapes.py` before a full build, or the full build leaves out the 2016 parks.
+- This laptop has no `raw/google.json`, so the parks were added with `python -I scripts/build_data.py --append-2016`, which keeps the Google data. The new parks have no Google timings yet. Run the Google scrape on the Mac for ids that start with `bbmp16-`.
+- The other two OpenCity files only count parks and playgrounds per ward, with no locations.
+
