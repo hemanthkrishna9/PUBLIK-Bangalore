@@ -5,6 +5,7 @@
     ["all", "All"], ["park", "Parks"], ["playground", "Playgrounds"],
     ["lake", "Lakes"], ["library", "Libraries"], ["toilet", "Toilets"],
   ];
+  const ICON = { all: "\u2728", park: "\u{1F333}", playground: "\u{1F6DD}", lake: "\u{1F30A}", library: "\u{1F4DA}", toilet: "\u{1F6BB}" };
   const CAT_LABEL = { park: "Park", playground: "Playground", lake: "Lake", library: "Library", toilet: "Public toilet" };
   const SRC_LABEL = { bbmp: "BBMP park list", osm: "OpenStreetMap" };
 
@@ -117,19 +118,19 @@
     li.tabIndex = 0;
     li.dataset.id = p.id;
     const s = status(p);
-    li.innerHTML = `<span class="name"></span><span class="dist"></span>
-      <span class="meta"><span class="cat"></span> <span class="pill ${s.cls}"></span></span>`;
-    const tags = (p.feat || []).filter((f) => ROW_TAGS.includes(f));
-    if (tags.length) {
+    li.innerHTML = `<span class="ic ic-${p.cat}" aria-hidden="true">${ICON[p.cat]}</span>
+      <span class="body"><span class="name"></span><span class="meta"><span class="cat"></span></span>
+      <span class="badges"><span class="pill ${s.cls}"></span></span></span><span class="dist"></span>`;
+    for (const f of (p.feat || []).filter((f) => ROW_TAGS.includes(f))) {
       const t = document.createElement("span");
-      t.className = "tags";
-      t.textContent = tags.join(" · ");
-      li.append(t);
+      t.className = "tag";
+      t.textContent = f;
+      li.querySelector(".badges").append(t);
     }
     li.querySelector(".name").textContent = p.name;
     li.querySelector(".dist").textContent = p._d != null && state.here ? fmtDist(p._d) : "";
     li.querySelector(".cat").textContent = CAT_LABEL[p.cat] + (p.area ? ` · ${p.area}` : "") +
-      (p.reviews ? ` · ${ratingText(p)}` : "") + " ·";
+      (p.reviews ? ` · ${ratingText(p)}` : "");
     li.querySelector(".pill").textContent = s.text;
     li.addEventListener("click", () => open(p));
     li.addEventListener("keydown", (e) => { if (e.key === "Enter") open(p); });
@@ -147,7 +148,7 @@
     tick();
     if (openId === null) opener = document.activeElement;
     openId = p.id;
-    $("d-cat").textContent = CAT_LABEL[p.cat];
+    $("d-cat").textContent = `${ICON[p.cat]} ${CAT_LABEL[p.cat]}`;
     $("d-name").textContent = p.name;
     $("d-area").textContent = [p.area, p._d != null && state.here ? fmtDist(p._d) + " away" : ""].filter(Boolean).join(" · ");
     const s = status(p);
@@ -235,7 +236,7 @@
       const b = document.createElement("button");
       b.className = "chip";
       b.type = "button";
-      b.textContent = label;
+      b.textContent = `${ICON[k]} ${label}`;
       b.setAttribute("aria-pressed", k === state.cat);
       b.addEventListener("click", () => {
         state.cat = k; state.shown = PAGE;
