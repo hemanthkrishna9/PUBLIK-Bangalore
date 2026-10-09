@@ -4,7 +4,7 @@ Last updated: 2026-10-09
 
 ## Status
 
-Version 1 is built and pushed to GitHub. It is not live yet. The Cloudflare project must be connected to the repo one time (see the checklist).
+Version 1 is live at https://publik.nxtduo.com. It was deployed with `wrangler deploy` from the work laptop on 2026-10-09. Auto-deploy on push is not on yet. The Cloudflare project must be connected to the repo one time (see the checklist). Until then, run `npx wrangler deploy` after each push.
 
 | Item | State |
 |---|---|
@@ -12,8 +12,8 @@ Version 1 is built and pushed to GitHub. It is not live yet. The Cloudflare proj
 | Data build script (`scripts/build_data.py`) | Done |
 | GitHub repo (github.com/hemanthkrishna9/PUBLIK-Bangalore) | Done |
 | Cloudflare configuration (`wrangler.jsonc`, route publik.nxtduo.com) | Done |
-| Cloudflare project connected to the repo | Open |
-| Site live at https://publik.nxtduo.com | Open |
+| Cloudflare project connected to the repo (auto-deploy on push) | Open |
+| Site live at https://publik.nxtduo.com | Done (DNS resolves to Cloudflare; office Zscaler blocks it, so check from a phone) |
 | Embedded map tested on a real phone | Open |
 
 ## Data in version 1
@@ -46,13 +46,12 @@ Known data problems:
 
 ## Checklist
 
-### Go live (one time, in the Cloudflare dashboard)
+### Turn on auto-deploy (one time, in the Cloudflare dashboard)
 
-1. Go to Workers & Pages, then Create, then Import a repository.
+1. Open Workers & Pages, then the `publik` Worker, then Settings, then Builds, then Connect.
 2. Select the repo `hemanthkrishna9/PUBLIK-Bangalore`.
-3. Keep the project name `publik`. Leave the build command empty. Keep the deploy command `npx wrangler deploy`.
-4. Click Deploy.
-5. Make sure that https://publik.nxtduo.com opens. Cloudflare creates the DNS record from the route in `wrangler.jsonc`.
+3. Select the branch `main`. Leave the build command empty. Keep the deploy command `npx wrangler deploy`.
+4. Save, then push a small change and make sure that the GitHub commit gets a check mark.
 
 ### Next work
 
