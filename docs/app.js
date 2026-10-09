@@ -13,7 +13,7 @@
     playground: svg('<path d="M4 21 8 4h8l4 17M10.5 4v10M13.5 4v10M9 14h6"/>'),
     lake: svg('<path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/>'),
     library: svg('<path d="M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1zM12 6v14"/>'),
-    toilet: svg('<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="900" font-family="Archivo, sans-serif" fill="currentColor" stroke="none">WC</text>'),
+    toilet: svg('<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="900" font-family="Baloo Tamma 2, sans-serif" fill="currentColor" stroke="none">WC</text>'),
   };
   const KN = { all: "ಎಲ್ಲಾ", park: "ಉದ್ಯಾನ", playground: "ಆಟದ ಮೈದಾನ", lake: "ಕೆರೆ", library: "ಗ್ರಂಥಾಲಯ", toilet: "ಶೌಚಾಲಯ" };
   const CAT_LABEL = { park: "Park", playground: "Playground", lake: "Lake", library: "Library", toilet: "Public toilet" };
@@ -109,8 +109,10 @@
       // Google review count first, then park size from the BBMP list.
       out.sort((a, b) => (b.reviews || 0) - (a.reviews || 0) || (b.sqm || 0) - (a.sqm || 0) || a.name.localeCompare(b.name));
     } else {
-      // Places with known timings first, then by name.
-      out.sort((a, b) => (known(b) - known(a)) || a.name.localeCompare(b.name));
+      // Open now first, then places with known timings, then the most reviewed.
+      const rank = (p) => (status(p).cls === "open" ? 0 : known(p) ? 1 : 2);
+      out.forEach((p) => (p._r = rank(p)));
+      out.sort((a, b) => a._r - b._r || (b.reviews || 0) - (a.reviews || 0) || a.name.localeCompare(b.name));
     }
     return out;
   }
@@ -132,7 +134,7 @@
     li.dataset.id = p.id;
     const s = status(p);
     li.innerHTML = `<span class="ic" aria-hidden="true">${ICON[p.cat]}</span>
-      <span class="body"><span class="name"></span><span class="meta"><span class="cat"></span></span>
+      <span class="body"><span class="name"></span><span class="meta"><span class="area"></span><span class="stars"></span></span>
       <span class="badges"><span class="pill ${s.cls}"></span></span></span><span class="dist"></span>`;
     for (const f of (p.feat || []).filter((f) => ROW_TAGS.includes(f))) {
       const t = document.createElement("span");
@@ -142,8 +144,8 @@
     }
     li.querySelector(".name").textContent = p.name;
     li.querySelector(".dist").textContent = p._d != null && state.here ? fmtDist(p._d) : "";
-    li.querySelector(".cat").textContent = CAT_LABEL[p.cat] + (p.area ? ` · ${p.area}` : "") +
-      (p.reviews ? ` · ${ratingText(p)}` : "");
+    li.querySelector(".area").textContent = p.area || CAT_LABEL[p.cat];
+    li.querySelector(".stars").textContent = p.reviews ? ratingText(p) : "";
     li.querySelector(".pill").textContent = s.text;
     li.addEventListener("click", () => open(p));
     li.addEventListener("keydown", (e) => { if (e.key === "Enter") open(p); });
@@ -179,7 +181,7 @@
     $("d-cat").children[1].textContent = CAT_LABEL[p.cat];
     $("d-cat").children[2].textContent = KN[p.cat];
     $("d-name").textContent = p.name;
-    $("d-area").textContent = [p.area, p._d != null && state.here ? fmtDist(p._d) + " away" : ""].filter(Boolean).join(" · ");
+    $("d-area").textContent = [p.area, p._d != null && state.here ? fmtDist(p._d) + " away" : ""].filter(Boolean).join(", ");
     const s = status(p);
     $("d-status").innerHTML = `<span class="pill ${s.cls}"></span>`;
     $("d-status").firstChild.textContent = s.text;
@@ -350,9 +352,23 @@
       }
       pool.forEach((p) => (p._d = distKm(p)));
     }
-    if (!pool.length) { btn.textContent = "Nothing open now"; setTimeout(() => (btn.textContent = "Surprise me"), 2500); return; }
+    if (!pool.length) { btn.textContent = "Nothing open right now"; setTimeout(() => (btn.textContent = "Surprise me"), 2500); return; }
+    const pick = pool[Math.floor(Math.random() * pool.length)];
     opener = btn;
-    open(pool[Math.floor(Math.random() * pool.length)]);
+    // One short shuffle through a few names, so the pick feels like a roll. Skipped for reduced motion.
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || pool.length < 4) { open(pick); return; }
+    btn.disabled = true;
+    btn.classList.add("rolling");
+    let i = 0;
+    const t = setInterval(() => {
+      btn.textContent = pool[Math.floor(Math.random() * pool.length)].name;
+      if (++i < 6) return;
+      clearInterval(t);
+      btn.textContent = "Surprise me";
+      btn.classList.remove("rolling");
+      btn.disabled = false;
+      open(pick);
+    }, 110);
   }
 
   function setupChips() {

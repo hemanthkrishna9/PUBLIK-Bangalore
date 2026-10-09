@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PUBLIK Bengaluru: parks, lakes, libraries, toilets</title>
 <meta name="description" content="Find free public spaces in Bengaluru: 1,600 parks, playgrounds, lakes, libraries and public toilets, with open-now status, timings and directions.">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="#e4e7e3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1712" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://publik.nxtduo.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PUBLIK">
@@ -20,30 +21,32 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"PUBLIK","alternateName":"PUBLIK Bengaluru","url":"https://publik.nxtduo.com/","description":"Free public spaces in Bengaluru: parks, playgrounds, lakes, libraries and public toilets, with timings and directions.","inLanguage":"en-IN","publisher":{"@type":"Organization","name":"NxtDuo","url":"https://nxtduo.com/"}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..900&family=Noto+Sans+Kannada:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Baloo+Tamma+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="hero">
   <div class="brand">
-    <h1 class="wordmark"><b>PUBLIK</b><span lang="kn">ಸಾರ್ವಜನಿಕ</span></h1>
-    <p>Parks, lakes, libraries and toilets in Bengaluru. Free, open, near you.</p>
+    <h1 class="wordmark"><span lang="kn">ಸಾರ್ವಜನಿಕ</span><b>PUBLIK Bengaluru</b></h1>
+    <p>Free parks, lakes, libraries, playgrounds and toilets across the city, with timings and what visitors saw today.</p>
+    <div class="hero-act">
+      <button id="surprise" class="btn surprise" type="button">Surprise me</button>
+      <span class="hint">Opens a good place that is open now.</span>
+    </div>
   </div>
-  <div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 </div>
 <header class="top">
   <div class="controls">
     <input id="q" type="search" placeholder="Search a place or area" autocomplete="off" aria-label="Search">
     <div class="chips" id="chips" role="group" aria-label="Type of place"></div>
     <div class="row">
-      <button id="surprise" class="btn primary">Surprise me</button>
       <button id="near" class="btn">Near me</button>
       <label class="toggle"><input type="checkbox" id="openNow"> Open now</label>
       <label class="toggle"><input type="checkbox" id="freeOnly"> Free</label>
       <label class="toggle"><input type="checkbox" id="accessOnly"> Accessible</label>
       <select id="sort" aria-label="Sort">
-        <option value="default">Sort: Timings known</option>
+        <option value="default">Sort: Open first</option>
         <option value="near">Sort: Nearest</option>
         <option value="popular">Sort: Most popular</option>
       </select>
@@ -54,7 +57,7 @@
 
 <main>
   <ul id="list" class="list"></ul>
-  <button id="more" class="btn wide" hidden>Show more</button>
+  <button id="more" class="btn wide" hidden>Show 50 more</button>
   <p id="empty" class="muted center" hidden>No places match. Try another search.</p>
 </main>
 
