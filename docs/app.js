@@ -5,7 +5,17 @@
     ["all", "All"], ["park", "Parks"], ["playground", "Playgrounds"],
     ["lake", "Lakes"], ["library", "Libraries"], ["toilet", "Toilets"],
   ];
-  const ICON = { all: "\u2728", park: "\u{1F333}", playground: "\u{1F6DD}", lake: "\u{1F30A}", library: "\u{1F4DA}", toilet: "\u{1F6BB}" };
+  // Line pictograms, drawn in currentColor so the CSS sets their color.
+  const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ICON = {
+    all: svg('<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'),
+    park: svg('<circle cx="12" cy="9" r="6"/><path d="M12 15v6M9 21h6"/>'),
+    playground: svg('<path d="M4 21 8 4h8l4 17M10.5 4v10M13.5 4v10M9 14h6"/>'),
+    lake: svg('<path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/>'),
+    library: svg('<path d="M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1zM12 6v14"/>'),
+    toilet: svg('<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="900" font-family="Archivo, sans-serif" fill="currentColor" stroke="none">WC</text>'),
+  };
+  const KN = { all: "ಎಲ್ಲಾ", park: "ಉದ್ಯಾನ", playground: "ಆಟದ ಮೈದಾನ", lake: "ಕೆರೆ", library: "ಗ್ರಂಥಾಲಯ", toilet: "ಶೌಚಾಲಯ" };
   const CAT_LABEL = { park: "Park", playground: "Playground", lake: "Lake", library: "Library", toilet: "Public toilet" };
   const SRC_LABEL = { bbmp: "BBMP park list", osm: "OpenStreetMap" };
 
@@ -114,11 +124,11 @@
 
   function row(p) {
     const li = document.createElement("li");
-    li.className = "item";
+    li.className = `item c-${p.cat}`;
     li.tabIndex = 0;
     li.dataset.id = p.id;
     const s = status(p);
-    li.innerHTML = `<span class="ic ic-${p.cat}" aria-hidden="true">${ICON[p.cat]}</span>
+    li.innerHTML = `<span class="ic" aria-hidden="true">${ICON[p.cat]}</span>
       <span class="body"><span class="name"></span><span class="meta"><span class="cat"></span></span>
       <span class="badges"><span class="pill ${s.cls}"></span></span></span><span class="dist"></span>`;
     for (const f of (p.feat || []).filter((f) => ROW_TAGS.includes(f))) {
@@ -161,7 +171,10 @@
       a.textContent = `${p.photo.license || "license"} via Wikimedia Commons`;
       cap.append(a);
     }
-    $("d-cat").textContent = `${ICON[p.cat]} ${CAT_LABEL[p.cat]}`;
+    $("d-cat").className = `d-cat c-${p.cat}`;
+    $("d-cat").innerHTML = `<span class="ic">${ICON[p.cat]}</span><span></span><span lang="kn"></span>`;
+    $("d-cat").children[1].textContent = CAT_LABEL[p.cat];
+    $("d-cat").children[2].textContent = KN[p.cat];
     $("d-name").textContent = p.name;
     $("d-area").textContent = [p.area, p._d != null && state.here ? fmtDist(p._d) + " away" : ""].filter(Boolean).join(" · ");
     const s = status(p);
@@ -250,7 +263,8 @@
       const b = document.createElement("button");
       b.className = "chip";
       b.type = "button";
-      b.textContent = `${ICON[k]} ${label}`;
+      b.classList.add(`c-${k}`);
+      b.innerHTML = `<span class="ic">${ICON[k]}</span><span>${label}</span><span lang="kn">${KN[k]}</span>`;
       b.setAttribute("aria-pressed", k === state.cat);
       b.addEventListener("click", () => {
         state.cat = k; state.shown = PAGE;

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://publik.nxtduo.com/sitemap.xml
