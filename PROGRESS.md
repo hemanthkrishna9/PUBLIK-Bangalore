@@ -62,7 +62,7 @@ Known data problems:
 - [ ] Clean up long BBMP park names.
 - [ ] Add timings for the most used parks, libraries and toilets.
 - [ ] Run `scripts/google_hours.py` with a Places API (New) key: test with `--limit 20` first, then rebuild and deploy.
-- [ ] Decide whether to rewrite git history to remove `.wrangler/cache/wrangler-account.json` (Cloudflare account ID and account name) from commit 9 of the history. It is no longer tracked.
+- [ ] Decide whether to rewrite git history to remove `.wrangler/cache/wrangler-account.json` (Cloudflare account ID and account name) from commit d33a926. It is no longer tracked.
 - [ ] Share the site with the friend and collect changes.
 - [ ] Look at the BBMP lakes and parks apps as competitors.
 - [ ] Later: crowd signal ("busy / quiet" taps), photos, Kannada.
