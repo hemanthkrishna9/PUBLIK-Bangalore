@@ -31,7 +31,15 @@ The `raw/` folder is not in git. The BBMP file contains contractor names and pho
 
    If the Overpass server is busy, it returns an error page. Run the command again after a few minutes.
 
-3. Build the data file:
+3. Download the OpenStreetMap area names into `raw/osm_places.json`. Use the query in `scripts/overpass_places_query.txt`:
+
+   ```
+   curl -A "publik" --data-urlencode data@scripts/overpass_places_query.txt https://overpass-api.de/api/interpreter -o raw/osm_places.json
+   ```
+
+   This file has the names of suburbs and neighbourhoods. The build script gives each place without an area the name of the nearest one within 2.5 km. If the file is missing or is an error page, the build still runs, but those places get no area.
+
+4. Build the data file:
 
    ```
    python scripts/build_data.py
