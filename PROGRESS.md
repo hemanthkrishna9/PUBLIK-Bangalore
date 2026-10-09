@@ -66,3 +66,11 @@ Known data problems:
 - [ ] Share the site with the friend and collect changes.
 - [ ] Look at the BBMP lakes and parks apps as competitors.
 - [ ] Later: crowd signal ("busy / quiet" taps), photos, Kannada.
+
+## Update 2026-10-09 (evening)
+
+- Deployed fixes from a site review: the Back button closes the card, "tomorrow" appears in closed status, Free and Accessible filters, and better dark-mode contrast.
+- Data: 1,613 places. BBMP parks that shared a point with another park are dropped (349), because their pins were wrong. Parks with timings went from 398 to 228 as a result.
+- Every place now has its nearest neighbourhood as its area (1,336 filled). Unnamed toilets are named "Public toilet, <area>".
+- The OpenStreetMap timings parser handles 53 of 57 formats.
+- Open: Google timings through the Mac session (prompt given to the owner), recovering 671 BBMP parks without coordinates, and a report form that needs no GitHub account.
