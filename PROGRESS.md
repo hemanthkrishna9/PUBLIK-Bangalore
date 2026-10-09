@@ -117,3 +117,17 @@ Known data problems:
 - [ ] Read the r/bangalore thread "Bangalore needs more public spaces" (Reddit blocks the work laptop; needs screenshots) and the "Evolution of public spaces of Bengaluru" paper (needs the PDF).
 - [ ] Later: verified-neighbor profiles and community events (Nextdoor model), never live location of people.
 
+
+## Update 2026-10-10 (session end)
+
+- New look deployed: green header, category icons, card rows, status badges, Plus Jakarta Sans font.
+- Photos: `scripts/wikimedia_photos.py` finds free Wikimedia Commons photos (title must name the place and include a category word, within 500 m). 56 places have a photo, loaded from Wikimedia's servers with credit. Results are in `raw/photos.json`.
+- Every place card has a "See photos and reviews on Google Maps" link. It uses the Google URL from the scrape when there is one.
+- Google timings: the Mac session runs `scripts/scrape_google.py` (interim: 44 tried, 31 matched, 25 new timings, no CAPTCHA). It must `git pull --rebase` before its final build, then push `docs/data/places.json`. After that push, pull here and run `npx wrangler deploy`.
+- Deploys are done with `npx wrangler deploy` from the work laptop. Git auto-deploy is still not connected.
+
+Next session:
+1. Pull the Mac results, check `scripts/google_run_report.md`, and deploy.
+2. Recover the 671 BBMP parks without coordinates (`scripts/geocode_bbmp.py` exists, but only accept leisure/park matches).
+3. A report form that needs no GitHub account.
+4. Decide whether to remove the Cloudflare account ID from git history (commit d33a926).
