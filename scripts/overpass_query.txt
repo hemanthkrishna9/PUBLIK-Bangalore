@@ -1,0 +1,9 @@
+[out:json][timeout:120];
+(
+ nwr["leisure"="park"](12.83,77.45,13.14,77.78);
+ nwr["leisure"="playground"](12.83,77.45,13.14,77.78);
+ nwr["natural"="water"]["water"="lake"](12.83,77.45,13.14,77.78);
+ nwr["amenity"="library"](12.83,77.45,13.14,77.78);
+ nwr["amenity"="toilets"](12.83,77.45,13.14,77.78);
+);
+out tags center;
