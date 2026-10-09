@@ -97,3 +97,21 @@ Known data problems:
 - This laptop has no `raw/google.json`, so the parks were added with `python -I scripts/build_data.py --append-2016`, which keeps the Google data. The new parks have no Google timings yet. Run the Google scrape on the Mac for ids that start with `bbmp16-`.
 - The other two OpenCity files only count parks and playgrounds per ward, with no locations.
 
+## Update 2026-10-09 (soft launch)
+
+- The owner posted PUBLIK in the SBA WhatsApp group on 2026-10-09, with a short personal note and credit to Arka for the idea. This is a soft launch to collect feedback before a wider post (for example r/bangalore).
+- Next step: wait for suggestions from the group. If none come, continue with the open items below.
+
+### Open items
+
+- [ ] Make the report message name what was saved ("Saved: Clean") and add space between the tap buttons. One "Clean" tap at Doddanekundi Lake Park was stored as "Quiet", most likely a mis-tap.
+- [ ] Turn on Worker request logs (`observability`) so lost reports can be traced.
+- [ ] Add a one-line privacy note under the report buttons (anonymous, no IP addresses stored).
+- [ ] Add Cloudflare Web Analytics (free, no cookies) to measure visits.
+- [ ] Clean up repeated and address-like names (for example two "Childrens play area" rows in Indiranagar).
+- [ ] Owner: open the five hand-check links in `scripts/google_run_report.md`.
+- [ ] Mac: run the Google scrape for the 281 `bbmp16-` parks; run `scripts/fetch_park_shapes.py` before any full rebuild.
+- [ ] Possible new tap buttons from Arka's reading list: "Well lit", "Feels safe", "Step-free".
+- [ ] Read the r/bangalore thread "Bangalore needs more public spaces" (Reddit blocks the work laptop; needs screenshots) and the "Evolution of public spaces of Bengaluru" paper (needs the PDF).
+- [ ] Later: verified-neighbor profiles and community events (Nextdoor model), never live location of people.
+
