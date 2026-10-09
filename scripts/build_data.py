@@ -93,9 +93,11 @@ def load_bbmp():
         key = re.sub(r"\s+", "", raw_t.lower())
         hours = BBMP_HOURS.get(key)
         feats = [lab for k, lab in BBMP_FEATURES.items() if field(desc, k).lower().startswith(("avail", "yes"))]
+        sqm = to_float(field(desc, "Area (in sqm)")) or to_float(re.sub(r"\D", "", field(desc, "Area (in sqm)")) + ".0")
         out.append(make_place(
             f"bbmp-{i}", "park", name, lat, lng, "bbmp", area=ward or None,
-            hours=hours, hours_src="BBMP park list" if hours else None, features=feats or None))
+            hours=hours, hours_src="BBMP park list" if hours else None, features=feats or None,
+            extra={"sqm": int(sqm)} if sqm else None))
     # The same point reused for many parks is a placeholder, not a location.
     seen = {}
     for p in out:
@@ -239,10 +241,36 @@ def dedupe(primary, secondary, radius_m=120):
     return kept
 
 
+def merge_google(places):
+    """Merge raw/google.json (written by google_hours.py) if it exists.
+
+    Google timings fill only places without timings. Ratings are added to every
+    matched place. Places that Google marks as permanently closed are dropped.
+    """
+    path = RAW / "google.json"
+    if not path.exists():
+        return places
+    g = json.loads(path.read_text(encoding="utf-8"))
+    out = []
+    for p in places:
+        r = g.get(p["id"])
+        if r and r.get("gid"):
+            if r.get("status") == "CLOSED_PERMANENTLY":
+                continue
+            if r.get("week") and "hours" not in p:
+                p["week"] = r["week"]
+                p["hoursSrc"] = f"Google Maps, checked {r['checked']}"
+            if r.get("reviews"):
+                p["rating"], p["reviews"] = r.get("rating"), r["reviews"]
+        out.append(p)
+    print("google records merged:", sum(1 for p in out if "week" in p or "reviews" in p))
+    return out
+
+
 def main():
     bbmp = load_bbmp()
     osm = load_osm()
-    places = bbmp + dedupe(bbmp, osm)
+    places = merge_google(bbmp + dedupe(bbmp, osm))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"built": __import__("datetime").date.today().isoformat(),
                                "places": places}, ensure_ascii=False, separators=(",", ":")),

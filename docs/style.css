@@ -105,3 +105,8 @@ main { padding: 8px 0; }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 .report { display: block; margin-top: 14px; font-size: .85rem; color: var(--muted); }
 footer { padding: 8px 16px 32px; color: var(--muted); font-size: .8rem; }
+#sort {
+  padding: 7px 8px; border-radius: 10px; font-size: .9rem;
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+}
+.hours-line.today { font-weight: 600; }

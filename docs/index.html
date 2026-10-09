@@ -20,6 +20,11 @@
     <div class="row">
       <button id="near" class="btn">Near me</button>
       <label class="toggle"><input type="checkbox" id="openNow"> Open now</label>
+      <select id="sort" aria-label="Sort">
+        <option value="default">Sort: Timings known</option>
+        <option value="near">Sort: Nearest</option>
+        <option value="popular">Sort: Most popular</option>
+      </select>
       <span id="count" class="muted"></span>
     </div>
   </div>
@@ -39,6 +44,7 @@
     <h2 id="d-name"></h2>
     <p class="muted" id="d-area"></p>
     <div id="d-status"></div>
+    <p id="d-rating" class="muted"></p>
     <section>
       <h3>Timings</h3>
       <div id="d-hours"></div>

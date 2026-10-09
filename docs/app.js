@@ -9,7 +9,8 @@
   const SRC_LABEL = { bbmp: "BBMP park list", osm: "OpenStreetMap" };
 
   const $ = (id) => document.getElementById(id);
-  const state = { places: [], cat: "all", q: "", openOnly: false, here: null, shown: PAGE };
+  const state = { places: [], cat: "all", q: "", openOnly: false, here: null, shown: PAGE, sort: "default" };
+  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
   // Current minutes since midnight in Bengaluru, whatever the viewer's timezone.
   function nowMinutes() {
@@ -19,16 +20,29 @@
     const m = +parts.find((p) => p.type === "minute").value;
     return h * 60 + m;
   }
+  // Day of week in Bengaluru, 0 = Sunday (same numbering as Google).
+  function today() {
+    const wd = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", weekday: "long" }).format(new Date());
+    return DAYS.indexOf(wd);
+  }
+  // Opening ranges for today, [] if closed all day, null if unknown.
+  function todayRanges(p) {
+    if (p.hours) return p.hours;
+    if (p.week) return p.week[today()] || [];
+    return null;
+  }
   const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 
   function status(p) {
-    if (!p.hours) return { cls: "unknown", text: "Timings not known" };
+    const ranges = todayRanges(p);
+    if (!ranges) return { cls: "unknown", text: "Timings not known" };
+    if (!ranges.length) return { cls: "closed", text: "Closed today" };
     const now = nowMinutes();
-    for (const [a, b] of p.hours) {
+    for (const [a, b] of ranges) {
       if (now >= toMin(a) && now < toMin(b)) return { cls: "open", text: `Open till ${fmt(b)}` };
     }
-    const next = p.hours.map(([a]) => toMin(a)).filter((a) => a > now).sort((x, y) => x - y)[0];
-    const first = p.hours[0][0];
+    const next = ranges.map(([a]) => toMin(a)).filter((a) => a > now).sort((x, y) => x - y)[0];
+    const first = ranges[0][0];
     return { cls: "closed", text: next !== undefined ? `Closed, opens ${fmt(minToT(next))}` : `Closed, opens ${fmt(first)}` };
   }
   const minToT = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -55,12 +69,16 @@
       (state.cat === "all" || p.cat === state.cat) &&
       (!q || p.name.toLowerCase().includes(q) || (p.area || "").toLowerCase().includes(q)) &&
       (!state.openOnly || status(p).cls === "open"));
-    if (state.here) {
-      out.forEach((p) => (p._d = distKm(p)));
+    if (state.here) out.forEach((p) => (p._d = distKm(p)));
+    const known = (p) => !!(p.hours || p.week);
+    if (state.sort === "near" && state.here) {
       out.sort((a, b) => a._d - b._d);
+    } else if (state.sort === "popular") {
+      // Google review count first, then park size from the BBMP list.
+      out.sort((a, b) => (b.reviews || 0) - (a.reviews || 0) || (b.sqm || 0) - (a.sqm || 0) || a.name.localeCompare(b.name));
     } else {
       // Places with known timings first, then by name.
-      out.sort((a, b) => (!!b.hours - !!a.hours) || a.name.localeCompare(b.name));
+      out.sort((a, b) => (known(b) - known(a)) || a.name.localeCompare(b.name));
     }
     return out;
   }
@@ -83,12 +101,15 @@
       <span class="meta"><span class="cat"></span> <span class="pill ${s.cls}"></span></span>`;
     li.querySelector(".name").textContent = p.name;
     li.querySelector(".dist").textContent = p._d != null && state.here ? fmtDist(p._d) : "";
-    li.querySelector(".cat").textContent = CAT_LABEL[p.cat] + (p.area ? ` · ${p.area}` : "") + " ·";
+    li.querySelector(".cat").textContent = CAT_LABEL[p.cat] + (p.area ? ` · ${p.area}` : "") +
+      (p.reviews ? ` · ${ratingText(p)}` : "") + " ·";
     li.querySelector(".pill").textContent = s.text;
     li.addEventListener("click", () => open(p));
     li.addEventListener("keydown", (e) => { if (e.key === "Enter") open(p); });
     return li;
   }
+
+  const ratingText = (p) => `★ ${p.rating ? p.rating.toFixed(1) : "-"} (${p.reviews.toLocaleString("en-IN")})`;
 
   function open(p) {
     $("d-cat").textContent = CAT_LABEL[p.cat];
@@ -100,12 +121,21 @@
 
     const hours = $("d-hours");
     hours.replaceChildren();
+    const line = (text, bold) => {
+      const d = document.createElement("p");
+      d.className = "hours-line" + (bold ? " today" : "");
+      d.textContent = text;
+      hours.append(d);
+    };
+    const rangesText = (rs) => !rs || !rs.length ? "Closed"
+      : rs.map(([a, b]) => (a === "00:00" && b === "24:00" ? "Open 24 hours" : `${fmt(a)} to ${fmt(b)}`)).join(", ");
     if (p.hours) {
-      for (const [a, b] of p.hours) {
-        const d = document.createElement("p");
-        d.className = "hours-line";
-        d.textContent = a === "00:00" && b === "24:00" ? "Open 24 hours" : `${fmt(a)} to ${fmt(b)}`;
-        hours.append(d);
+      line(rangesText(p.hours) + " (every day)");
+    } else if (p.week) {
+      const t = today();
+      for (let i = 0; i < 7; i++) {
+        const d = (i + 1) % 7; // Monday first
+        line(`${DAYS[d]}: ${rangesText(p.week[d])}`, d === t);
       }
     } else {
       const d = document.createElement("p");
@@ -118,6 +148,7 @@
     src.textContent = `Source: ${p.hoursSrc || SRC_LABEL[p.src]}. Timings can change, so check at the place.`;
     hours.append(src);
 
+    $("d-rating").textContent = p.reviews ? `${ratingText(p)} on Google Maps` : "";
     $("d-feat").replaceChildren(...(p.feat || []).map((f) => { const s = document.createElement("span"); s.textContent = f; return s; }));
 
     const ll = `${p.lat},${p.lng}`;
@@ -164,7 +195,9 @@
       (pos) => {
         state.here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         state.shown = PAGE;
-        btn.textContent = "Sorted by distance";
+        state.sort = "near";
+        $("sort").value = "near";
+        btn.textContent = "Location on";
         render();
       },
       () => { btn.textContent = "Location blocked. Try again"; },
@@ -175,7 +208,11 @@
     setupChips();
     $("q").addEventListener("input", (e) => { state.q = e.target.value; state.shown = PAGE; render(); });
     $("openNow").addEventListener("change", (e) => { state.openOnly = e.target.checked; state.shown = PAGE; render(); });
-    $("near").addEventListener("click", nearMe);
+    $("near").addEventListener("click", () => nearMe());
+    $("sort").addEventListener("change", (e) => {
+      state.sort = e.target.value; state.shown = PAGE;
+      if (state.sort === "near" && !state.here) nearMe(); else render();
+    });
     $("more").addEventListener("click", () => { state.shown += PAGE; render(); });
     $("sheet").addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) close(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheet").hidden) close(); });
