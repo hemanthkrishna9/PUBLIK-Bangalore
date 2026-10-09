@@ -24,6 +24,9 @@
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const ROW_TAGS = ["Free", "Paid", "Wheelchair access"];
   const hasFeat = (p, f) => !!p.feat && p.feat.includes(f);
+  const KINDS = [["clean", "Clean"], ["dirty", "Dirty"], ["crowded", "Crowded"], ["quiet", "Quiet"], ["open", "Open now"], ["closed", "Closed now"]];
+  const KIND_LABEL = Object.fromEntries(KINDS);
+  const TAP_GAP = 30 * 60 * 1000; // one tap per kind per place every 30 minutes
 
   // Formatters are costly to build, so make them once.
   const HM_FMT = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -212,6 +215,7 @@
     hours.append(src);
 
     $("d-rating").textContent = p.reviews ? `${ratingText(p)} on Google Maps` : "";
+    loadReports(p);
     $("d-feat").replaceChildren(...(p.feat || []).map((f) => { const s = document.createElement("span"); s.textContent = f; return s; }));
 
     const ll = `${p.lat},${p.lng}`;
@@ -256,6 +260,99 @@
     const p = hash && state.places.find((x) => x.id === hash);
     if (p) { if (openId !== p.id) { pushed = false; open(p, true); } }
     else close(true);
+  }
+
+  // Reports: anonymous one-tap notes from visitors. The API decides how long each kind shows.
+  const ago = (ts) => {
+    const m = Math.max(1, Math.round((Date.now() - ts) / 60000));
+    return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+  };
+  const tapKey = (id, k) => `publik:tap:${id}:${k}`;
+  const lastTap = (id, k) => { try { return +localStorage.getItem(tapKey(id, k)) || 0; } catch { return 0; } };
+
+  function showReports(rows) {
+    const box = $("d-live-list");
+    if (!rows.length) { box.textContent = "No recent reports. Be the first to tell others."; return; }
+    box.replaceChildren(...rows.map((r) => {
+      const d = document.createElement("span");
+      d.className = "rep";
+      d.textContent = `${KIND_LABEL[r.kind]}, ${ago(r.last)}${r.n > 1 ? ` (${r.n})` : ""}`;
+      return d;
+    }));
+  }
+
+  function drawTaps(p) {
+    $("d-taps").replaceChildren(...KINDS.map(([k, label]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tap";
+      b.textContent = label;
+      b.disabled = Date.now() - lastTap(p.id, k) < TAP_GAP;
+      b.addEventListener("click", () => sendReport(p, k));
+      return b;
+    }));
+  }
+
+  let reportsFor = null;
+  async function loadReports(p) {
+    reportsFor = p.id;
+    $("d-live").hidden = false;
+    $("d-tap-msg").textContent = "";
+    $("d-live-list").textContent = "Loading...";
+    drawTaps(p);
+    try {
+      const res = await fetch(`/api/reports?place=${encodeURIComponent(p.id)}`);
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      if (reportsFor === p.id) { p._reports = data.reports; showReports(data.reports); }
+    } catch {
+      if (reportsFor === p.id) $("d-live").hidden = true; // no API, for example a local preview
+    }
+  }
+
+  async function sendReport(p, kind) {
+    const msg = $("d-tap-msg");
+    $("d-taps").querySelectorAll("button").forEach((b) => (b.disabled = true));
+    msg.textContent = "Sending...";
+    try {
+      const res = await fetch("/api/report", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ place: p.id, kind }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not send. Try again later.");
+      try { localStorage.setItem(tapKey(p.id, kind), String(Date.now())); } catch {}
+      if (reportsFor !== p.id) return;
+      const rows = (p._reports || []).filter((r) => r.kind !== kind);
+      const old = (p._reports || []).find((r) => r.kind === kind);
+      p._reports = [{ kind, n: (old ? old.n : 0) + 1, last: Date.now() }, ...rows];
+      showReports(p._reports);
+      msg.textContent = "Thanks. Others can see it now.";
+    } catch (e) {
+      if (reportsFor === p.id) msg.textContent = e.message;
+    }
+    if (reportsFor === p.id) drawTaps(p);
+  }
+
+  // Surprise me: a random good place that is open now, near you if location is on.
+  function surprise() {
+    tick();
+    const btn = $("surprise");
+    const fits = (p) => status(p).cls === "open" &&
+      (state.cat === "all" ? p.cat !== "toilet" : p.cat === state.cat);
+    let pool = state.places.filter(fits);
+    const good = pool.filter((p) => (p.rating || 0) >= 4 && (p.reviews || 0) >= 20);
+    if (good.length) pool = good;
+    if (state.here) {
+      for (const km of [3, 6, 12]) {
+        const near = pool.filter((p) => distKm(p) <= km);
+        if (near.length) { pool = near; break; }
+      }
+      pool.forEach((p) => (p._d = distKm(p)));
+    }
+    if (!pool.length) { btn.textContent = "Nothing open now"; setTimeout(() => (btn.textContent = "Surprise me"), 2500); return; }
+    opener = btn;
+    open(pool[Math.floor(Math.random() * pool.length)]);
   }
 
   function setupChips() {
@@ -307,6 +404,7 @@
     $("freeOnly").addEventListener("change", (e) => { state.freeOnly = e.target.checked; state.shown = PAGE; render(); });
     $("accessOnly").addEventListener("change", (e) => { state.accessOnly = e.target.checked; state.shown = PAGE; render(); });
     $("near").addEventListener("click", () => nearMe());
+    $("surprise").addEventListener("click", () => surprise());
     $("sort").addEventListener("change", (e) => {
       state.sort = e.target.value; state.shown = PAGE;
       if (state.sort === "near" && !state.here) nearMe(); else render();

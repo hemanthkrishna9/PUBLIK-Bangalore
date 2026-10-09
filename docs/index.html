@@ -37,6 +37,7 @@
     <input id="q" type="search" placeholder="Search a place or area" autocomplete="off" aria-label="Search">
     <div class="chips" id="chips" role="group" aria-label="Type of place"></div>
     <div class="row">
+      <button id="surprise" class="btn primary">Surprise me</button>
       <button id="near" class="btn">Near me</button>
       <label class="toggle"><input type="checkbox" id="openNow"> Open now</label>
       <label class="toggle"><input type="checkbox" id="freeOnly"> Free</label>
@@ -67,6 +68,13 @@
     <p class="muted" id="d-area"></p>
     <div id="d-status"></div>
     <p id="d-rating" class="muted"></p>
+    <section id="d-live" hidden>
+      <h3>Right now</h3>
+      <p id="d-live-list" class="reps"></p>
+      <p class="muted tap-help">Are you here? Tap what you see.</p>
+      <div id="d-taps" class="taps"></div>
+      <p id="d-tap-msg" class="muted" role="status"></p>
+    </section>
     <section>
       <h3>Timings</h3>
       <div id="d-hours"></div>

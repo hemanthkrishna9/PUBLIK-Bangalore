@@ -1,9 +1,16 @@
 {
   "name": "publik",
+  "main": "src/worker.js",
   "compatibility_date": "2026-09-01",
   "assets": {
-    "directory": "./docs"
+    "directory": "./docs",
+    "binding": "ASSETS",
+    // Only the API runs the Worker; every other path is a static file.
+    "run_worker_first": ["/api/*"]
   },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "publik", "database_id": "0a2ea87e-8853-4bce-8d2d-43724ef1b6cd" }
+  ],
   "routes": [
     { "pattern": "publik.nxtduo.com", "custom_domain": true }
   ]

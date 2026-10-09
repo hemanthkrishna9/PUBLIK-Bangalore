@@ -203,3 +203,16 @@ footer { padding: 16px 16px 36px; color: var(--muted); font-size: .78rem; text-a
 .photo img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; display: block; background: var(--tint); }
 .photo figcaption { font-size: .72rem; color: var(--muted); margin-top: 4px; }
 .photos-link { display: block; margin-top: 14px; text-align: center; font-weight: 700; font-size: .9rem; }
+
+/* Right now: visitor reports on the place card */
+#d-live .reps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; font-size: .88rem; color: var(--muted); }
+.rep { border: 1.5px solid var(--line); border-radius: 3px; padding: 2px 8px; font-size: .8rem; font-weight: 700; color: var(--text); }
+.tap-help { margin: 12px 0 6px; }
+.taps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tap {
+  padding: 10px 6px; border-radius: 4px; font: inherit; font-size: .85rem; font-weight: 700;
+  border: 2px solid var(--soft-line); background: var(--card); color: var(--text); cursor: pointer;
+}
+.tap:hover:not(:disabled) { border-color: var(--line); }
+.tap:disabled { opacity: .45; cursor: default; }
+#d-tap-msg { min-height: 1.4em; margin: 8px 0 0; }

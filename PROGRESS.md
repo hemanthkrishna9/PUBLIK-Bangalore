@@ -80,3 +80,12 @@ Known data problems:
 - The Mac session scraped Google Maps for all 1,801 places (commit 62c9f00). 1,099 records merged into places.json. 766 places now have timings and 1,089 have a Google rating.
 - Deployed with `wrangler deploy` from the work laptop (version 975a77d3). Wrangler needs `NODE_OPTIONS=--use-system-ca` here because of the Zscaler certificate.
 - The owner must open the five hand-check links in `scripts/google_run_report.md` in a normal browser.
+
+## Update 2026-10-09 (late night)
+
+- New look: black header, five-color category stripe, flat cards, line pictograms, Kannada category names. Share image, canonical, Open Graph, JSON-LD, robots.txt and sitemap.xml added.
+- Surprise me: picks a well-rated place that is open now, near you when location is on. Toilets are left out unless the Toilets filter is on.
+- One-tap reports (Clean, Dirty, Crowded, Quiet, Open now, Closed now) through `src/worker.js` and the D1 database `publik` (schema in `src/schema.sql`). Open, Closed, Crowded and Quiet show for 3 hours, Clean and Dirty for 48 hours. "Closed now" shows only after 2 reports. Limits: 2,000 reports a day in total, 50 per place a day, one per kind per place every 30 minutes per visitor.
+- Privacy: the visitor key is a hash of the IP with a random salt that changes every day. Old salts are deleted, and keys are cleared after 24 hours. No raw IPs are stored.
+- On this laptop, `wrangler d1 execute --file` fails behind Zscaler. Use `--command` with the SQL instead.
+
