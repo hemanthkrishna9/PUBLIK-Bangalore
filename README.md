@@ -53,3 +53,7 @@ Any new source must produce records in the same shape as `make_place()` in `scri
 ## Report wrong information
 
 Each place has a "Report wrong information" link. It opens a GitHub issue with the place ID filled in.
+
+## Hosting
+
+The site runs on Cloudflare Workers (static assets) at https://publik.nxtduo.com. The configuration is in `wrangler.jsonc`. Cloudflare Workers Builds deploys the `main` branch on every push.
