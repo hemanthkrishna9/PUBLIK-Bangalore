@@ -100,6 +100,8 @@ Known data problems:
 ## Update 2026-10-09 (soft launch)
 
 - The owner posted PUBLIK in the SBA WhatsApp group on 2026-10-09, with a short personal note and credit to Arka for the idea. This is a soft launch to collect feedback before a wider post (for example r/bangalore).
+- The idea came from Arka in the St. Broseph Indiranagar chapter WhatsApp group. A Reddit post for r/bangalore is drafted (casual, credits that group, honest about rough data). The owner posts it from their own account after checking the subreddit rules.
+- Before the Reddit post, do the first three open items (saved-report message, privacy note, analytics), because Reddit can bring far more visitors.
 - Next step: wait for suggestions from the group. If none come, continue with the open items below.
 
 ### Open items
