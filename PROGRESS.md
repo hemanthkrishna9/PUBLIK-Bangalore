@@ -16,7 +16,7 @@ Version 1 is live at https://publik.nxtduo.com. It was deployed with `wrangler d
 | Site live at https://publik.nxtduo.com | Done (DNS resolves to Cloudflare; office Zscaler blocks it, so check from a phone) |
 | Embedded map tested on a real phone | Open |
 | Daily timings, Google rating, sort switch (Timings known / Nearest / Most popular) | Done, deployed |
-| Google timings script (`scripts/google_hours.py`) | Written, not run yet (needs an API key) |
+| Google Maps timings scrape (`scripts/scrape_google.py`, run on the Mac) | Done, deployed 2026-10-09 (see `scripts/google_run_report.md`) |
 
 ## Data in version 1
 
@@ -61,7 +61,7 @@ Known data problems:
 - [ ] Recover the 671 BBMP parks without coordinates (match by name and ward to OpenStreetMap).
 - [ ] Clean up long BBMP park names.
 - [ ] Add timings for the most used parks, libraries and toilets.
-- [ ] Run `scripts/google_hours.py` with a Places API (New) key: test with `--limit 20` first, then rebuild and deploy.
+- [ ] Retry the 18 Google scrape errors, and review the `nomatch` places between 250 m and 500 m.
 - [ ] Decide whether to rewrite git history to remove `.wrangler/cache/wrangler-account.json` (Cloudflare account ID and account name) from commit d33a926. It is no longer tracked.
 - [ ] Share the site with the friend and collect changes.
 - [ ] Look at the BBMP lakes and parks apps as competitors.
@@ -74,3 +74,9 @@ Known data problems:
 - Every place now has its nearest neighbourhood as its area (1,336 filled). Unnamed toilets are named "Public toilet, <area>".
 - The OpenStreetMap timings parser handles 53 of 57 formats.
 - Open: Google timings through the Mac session (prompt given to the owner), recovering 671 BBMP parks without coordinates, and a report form that needs no GitHub account.
+
+## Update 2026-10-09 (night)
+
+- The Mac session scraped Google Maps for all 1,801 places (commit 62c9f00). 1,099 records merged into places.json. 766 places now have timings and 1,089 have a Google rating.
+- Deployed with `wrangler deploy` from the work laptop (version 975a77d3). Wrangler needs `NODE_OPTIONS=--use-system-ca` here because of the Zscaler certificate.
+- The owner must open the five hand-check links in `scripts/google_run_report.md` in a normal browser.
