@@ -179,3 +179,7 @@ main { padding: 8px 0; }
 .actions .btn { padding: 12px 14px; border-radius: 14px; }
 .report { display: block; margin-top: 16px; font-size: .82rem; color: var(--muted); text-align: center; }
 footer { padding: 12px 16px 36px; color: var(--muted); font-size: .78rem; text-align: center; }
+.photo { margin: -4px -2px 14px; }
+.photo img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; display: block; background: var(--bg); }
+.photo figcaption { font-size: .72rem; color: var(--muted); margin-top: 4px; }
+.photos-link { display: block; margin-top: 14px; text-align: center; font-weight: 600; font-size: .9rem; }

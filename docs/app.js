@@ -148,6 +148,19 @@
     tick();
     if (openId === null) opener = document.activeElement;
     openId = p.id;
+    const fig = $("d-photo");
+    fig.hidden = !p.photo;
+    if (p.photo) {
+      const img = fig.querySelector("img");
+      img.src = p.photo.src;
+      img.alt = p.name;
+      const cap = fig.querySelector("figcaption");
+      cap.replaceChildren(`Photo: ${p.photo.author}, `);
+      const a = document.createElement("a");
+      a.href = p.photo.page; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = `${p.photo.license || "license"} via Wikimedia Commons`;
+      cap.append(a);
+    }
     $("d-cat").textContent = `${ICON[p.cat]} ${CAT_LABEL[p.cat]}`;
     $("d-name").textContent = p.name;
     $("d-area").textContent = [p.area, p._d != null && state.here ? fmtDist(p._d) + " away" : ""].filter(Boolean).join(" · ");
@@ -191,6 +204,7 @@
     const ll = `${p.lat},${p.lng}`;
     $("d-map").src = `https://maps.google.com/maps?q=${ll}&z=16&output=embed`;
     $("d-dir").href = `https://www.google.com/maps/dir/?api=1&destination=${ll}`;
+    $("d-photos").href = p.gmap || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}%20${ll}`;
     $("d-gmap").href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}%20${ll}`;
     const title = encodeURIComponent(`Wrong info: ${p.name} (${p.id})`);
     const body = encodeURIComponent(`Place: ${p.name}\nID: ${p.id}\nLocation: ${ll}\n\nWhat is wrong (timings, closed, not public, wrong place)?\n`);

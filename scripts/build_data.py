@@ -440,6 +440,8 @@ def merge_google(places):
             if r.get("week") and "hours" not in p and "week" not in p:
                 p["week"] = r["week"]
                 p["hoursSrc"] = f"Google Maps, checked {r['checked']}"
+            if str(r["gid"]).startswith("https://www.google.com/maps/"):
+                p["gmap"] = r["gid"]
             if r.get("reviews"):
                 p["rating"], p["reviews"] = r.get("rating"), r["reviews"]
         out.append(p)
@@ -447,11 +449,24 @@ def merge_google(places):
     return out
 
 
+def merge_photos(places):
+    """Add Wikimedia Commons photos from raw/photos.json (written by wikimedia_photos.py)."""
+    path = RAW / "photos.json"
+    if not path.exists():
+        return places
+    ph = json.loads(path.read_text(encoding="utf-8"))
+    for p in places:
+        if ph.get(p["id"]):
+            p["photo"] = ph[p["id"]]
+    print("photos merged:", sum(1 for p in places if "photo" in p))
+    return places
+
+
 def main():
     bbmp = load_bbmp()
     osm = load_osm()
     test_parser()
-    places = merge_google(bbmp + dedupe(bbmp, osm))
+    places = merge_photos(merge_google(bbmp + dedupe(bbmp, osm)))
     nodes = load_area_nodes()
     no_area = sum(1 for p in places if not p.get("area"))
     filled = fill_areas(places, nodes)
