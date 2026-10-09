@@ -420,6 +420,12 @@
     $("freeOnly").addEventListener("change", (e) => { state.freeOnly = e.target.checked; state.shown = PAGE; render(); });
     $("accessOnly").addEventListener("change", (e) => { state.accessOnly = e.target.checked; state.shown = PAGE; render(); });
     $("near").addEventListener("click", () => nearMe());
+    // Drop the edge fade once the categories are scrolled to the end.
+    const chips = $("chips");
+    const edge = () => chips.classList.toggle("at-end", chips.scrollLeft + chips.clientWidth >= chips.scrollWidth - 4);
+    chips.addEventListener("scroll", edge, { passive: true });
+    window.addEventListener("resize", edge);
+    edge();
     $("surprise").addEventListener("click", () => surprise());
     $("sort").addEventListener("change", (e) => {
       state.sort = e.target.value; state.shown = PAGE;

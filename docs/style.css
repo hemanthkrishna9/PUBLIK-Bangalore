@@ -256,3 +256,25 @@ main { padding: 4px 0 0; }
 footer { padding: 24px 16px 40px; color: var(--muted); font-size: .82rem; }
 footer p { margin: 0 0 6px; }
 @media (min-width: 760px) { .list { margin: 0; } }
+
+/* Only search and categories stay pinned; the other filters scroll away with the page. */
+.filterbar { max-width: 720px; margin: 0 auto; padding: 2px 16px 12px; }
+.filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+.filters::-webkit-scrollbar { display: none; }
+.filters > * { flex: none; }
+.top { padding-bottom: 4px; }
+/* Fade the right edge so it is clear that the categories scroll sideways. */
+.chips {
+  scroll-snap-type: x proximity; scroll-padding-left: 0;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+  padding-right: 28px;
+}
+.chip { scroll-snap-align: start; }
+.chips.at-end { -webkit-mask-image: none; mask-image: none; }
+@media (max-width: 420px) {
+  #q { min-height: 46px; }
+  .chip { min-height: 38px; font-size: .95rem; }
+  .chip .ic { width: 28px; height: 28px; }
+}
+.filterbar #count { margin: 8px 2px 0; }
