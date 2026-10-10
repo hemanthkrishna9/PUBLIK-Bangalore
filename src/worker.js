@@ -99,6 +99,33 @@ async function postReport(req, env, ctx) {
   return json({ ok: true });
 }
 
+// City-wide feed for the home page: the newest reports and visits across all places.
+// A report shows only while it is still fresh (KINDS), and "Closed now" only after two agree.
+async function getActivity(env) {
+  const now = Date.now();
+  const [reps, vis] = await env.DB.batch([
+    env.DB.prepare("SELECT place, kind, ts FROM reports WHERE ts > ? ORDER BY ts DESC LIMIT 300").bind(now - 48 * HOUR),
+    env.DB.prepare("SELECT place, ts, entry, feel, first FROM visits WHERE ts > ? ORDER BY ts DESC LIMIT 30").bind(now - 7 * 24 * HOUR),
+  ]);
+  const by = new Map();
+  for (const r of reps.results) {
+    if (now - r.ts > KINDS[r.kind] * HOUR) continue;
+    const k = r.place + "|" + r.kind;
+    const b = by.get(k) || { type: "report", place: r.place, kind: r.kind, n: 0, last: r.ts };
+    b.n++;
+    by.set(k, b);
+  }
+  const items = [...by.values()].filter((b) => b.kind !== "closed" || b.n >= 2);
+  const seen = new Set();
+  for (const v of vis.results) {
+    if (seen.has(v.place)) continue; // newest visit per place
+    seen.add(v.place);
+    items.push({ type: "visit", place: v.place, last: v.ts, entry: v.entry, feel: v.feel, first: v.first });
+  }
+  items.sort((a, b) => b.last - a.last);
+  return json({ items: items.slice(0, 15) });
+}
+
 // Summary of the last 365 days: visit count, last visit, and a tally per answer.
 async function getVisits(url, env) {
   const place = url.searchParams.get("place") || "";
@@ -163,6 +190,7 @@ export default {
       if (url.pathname === "/api/reports" && req.method === "GET") return await getReports(url, env);
       if (url.pathname === "/api/report" && req.method === "POST") return await postReport(req, env, ctx);
       if (url.pathname === "/api/visits" && req.method === "GET") return await getVisits(url, env);
+      if (url.pathname === "/api/activity" && req.method === "GET") return await getActivity(env);
       if (url.pathname === "/api/visit" && req.method === "POST") return await postVisit(req, env, ctx);
       return json({ error: "Not found." }, 404);
     } catch (e) {

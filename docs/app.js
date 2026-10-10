@@ -456,6 +456,7 @@
       const old = (p._reports || []).find((r) => r.kind === kind);
       p._reports = [{ kind, n: (old ? old.n : 0) + 1, last: Date.now() }, ...rows];
       showReports(p._reports);
+      loadActivity();
       msg.textContent = "Thanks. Others can see it now.";
     } catch (e) {
       if (reportsFor === p.id) msg.textContent = e.message;
@@ -572,12 +573,61 @@
         const p = state.places.find((x) => x.id === id);
         if (p) await loadVisits(p);
         if (visitsFor === id) msg.textContent = "Saved. The next first-timer will see it.";
+        loadActivity();
       }
     } catch (err) {
       if (visitsFor === id) msg.textContent = err.message;
     }
     send.disabled = false;
   });
+
+  // Home page feed: the newest taps and visits across the city. Hidden when there are none.
+  // One sentence per card, for example "Someone marked <place> as clean". Returns [before, after] the place name.
+  const REPORT_SAY = {
+    clean: ["marked", "as clean"], dirty: ["marked", "as dirty"], crowded: ["said", "is crowded"],
+    quiet: ["said", "is quiet"], open: ["found", "open"], closed: ["found", "closed"],
+  };
+  const VISIT_SAY = {
+    feel: { quiet: "and found it quiet", lively: "and found it lively", crowded: "and marked it crowded" },
+    entry: { walkin: "and walked right in", id: "and needed an ID to enter", member: "and found it members only" },
+    first: { yes: "and says it is easy for first-timers", okay: "and says it is okay for first-timers", no: "and says it is not easy for first-timers" },
+  };
+  function activityText(it) {
+    const who = it.n > 1 ? `${it.n} people` : "Someone";
+    if (it.type === "report") return [`${who} ${REPORT_SAY[it.kind][0]}`, REPORT_SAY[it.kind][1]];
+    for (const q of ["feel", "entry", "first"]) if (it[q] && VISIT_SAY[q][it[q]]) return ["Someone checked into", VISIT_SAY[q][it[q]]];
+    return ["Someone checked into", ""];
+  }
+
+  async function loadActivity() {
+    let items = [];
+    try {
+      const res = await fetch("/api/activity");
+      if (!res.ok) throw new Error(res.status);
+      items = (await res.json()).items || [];
+    } catch {
+      return; // no API, for example a local preview
+    }
+    const byId = new Map(state.places.map((p) => [p.id, p]));
+    const cards = items.filter((it) => byId.has(it.place)).map((it) => {
+      const p = byId.get(it.place);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `live-card c-${p.cat}`;
+      b.innerHTML = `<span class="ic" aria-hidden="true">${ICON[p.cat]}</span><span class="lc-body">
+        <span class="lc-what"><span></span> <b></b> <span></span></span><span class="lc-when"></span></span>`;
+      const [before, after] = activityText(it);
+      const what = b.querySelector(".lc-what").children;
+      what[0].textContent = before;
+      what[1].textContent = p.name;
+      what[2].textContent = after;
+      b.querySelector(".lc-when").textContent = [ago(it.last), p.area].filter(Boolean).join(", ");
+      b.addEventListener("click", () => open(p));
+      return b;
+    });
+    $("live-row").replaceChildren(...cards);
+    $("live").hidden = cards.length === 0;
+  }
 
   // Surprise me: a random good place that is open now, near you if location is on.
   function surprise() {
@@ -693,6 +743,7 @@
     try { saved = localStorage.getItem("publik:view") || "list"; } catch {}
     if (saved === "map") setView("map"); else render();
     syncHash();
+    loadActivity();
   }
 
   init().catch((e) => { $("count").textContent = "Could not load places. Refresh the page."; console.error(e); });

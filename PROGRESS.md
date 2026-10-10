@@ -166,3 +166,10 @@ Next session:
 - Fix: the "I went here" answer buttons used the class `chip`, which the category chips also use. Picking a category changed them too. They now use `pick`.
 - Above the map, a hint says "Numbers are groups of places. Tap one to zoom in.", with a color key. Each group has a ring split by the categories inside it.
 - Next from feedback: Arka's "live activity" carousel on the home page. It must hide itself when there are fewer than about five recent items.
+
+## Update 2026-10-10 (Happening around Bengaluru)
+
+- Arka asked for "live view of most recent activity in public spaces", in cards or a carousel, as the first thing visitors see, for stickiness. He gave the wording: "Someone marked Doddanekundi as clean 2 mins back".
+- The home page now has a sideways row of cards under Surprise me. Each card is one sentence, for example "Someone checked into RT Nagar Public Library and marked it crowded", with the time and area. Tapping a card opens the place.
+- API: `GET /api/activity` in `src/worker.js`. It merges fresh one-tap reports (same visible times as the place card, "Closed now" only after two reports) with the newest "I went here" visit per place from the last 7 days. It returns at most 15 items. The row hides when there are none.
+- Owner and Arka: ask SBA friends to tap when they really visit a place, so the row has real content.
