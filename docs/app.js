@@ -143,7 +143,7 @@
   const LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
   const CLUSTER = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/";
   const PIN = { park: "#2e7d46", playground: "#e0a019", lake: "#2f6e9e", library: "#7a4e9c", toilet: "#2f8a8a" };
-  let map = null, pins = null, meDot = null, leafletLoad = null, fitKey = "";
+  let map = null, pins = null, meDot = null, leafletLoad = null, fitKey = "", fitHere = false;
 
   const addCss = (href) => {
     const l = document.createElement("link");
@@ -174,8 +174,23 @@
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
+    const Locate = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd() {
+        const b = L.DomUtil.create("button", "locate");
+        b.type = "button";
+        b.title = "Show my location";
+        b.setAttribute("aria-label", "Show my location");
+        b.innerHTML = svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/>');
+        L.DomEvent.disableClickPropagation(b);
+        b.addEventListener("click", locateMe);
+        return b;
+      },
+    });
+    map.addControl(new Locate());
     pins = L.markerClusterGroup({
       showCoverageOnHover: false, maxClusterRadius: 45, disableClusteringAtZoom: 16,
+      animate: false, // with animation on, a pin could stay hidden after a one-level zoom (seen 2026-10-10)
       iconCreateFunction: groupIcon,
     });
     map.addLayer(pins);
@@ -210,18 +225,36 @@
       m.on("click", () => open(p));
       return m;
     }));
-    if (meDot) { meDot.remove(); meDot = null; }
-    if (state.here) {
-      meDot = L.circleMarker([state.here.lat, state.here.lng], {
-        radius: 8, weight: 3, color: "#ffffff", fillColor: "#1a73e8", fillOpacity: 1, interactive: false,
+    // The "you are here" dot is its own element. Drawing it on the pins' canvas erased the pins.
+    if (state.here && !meDot) {
+      meDot = L.marker([state.here.lat, state.here.lng], {
+        icon: L.divIcon({ className: "me-dot", iconSize: [20, 20] }), interactive: false, keyboard: false, zIndexOffset: 1000,
       }).addTo(map);
-    }
+    } else if (meDot && state.here) meDot.setLatLng([state.here.lat, state.here.lng]);
     // Move the map only when the filters or the location change, not on every redraw.
-    const key = [state.cat, state.q.trim(), state.openOnly, state.freeOnly, state.accessOnly, !!state.here].join("|");
-    if (key === fitKey) return;
+    // A new search or filter shows its results. Location turning on (or the map opening) centers on you.
+    const key = [state.cat, state.q.trim(), state.openOnly, state.freeOnly, state.accessOnly].join("|");
+    const filtersChanged = fitKey !== "" && key !== fitKey;
+    if (key === fitKey && !!state.here === fitHere) return;
     fitKey = key;
-    if (state.here && state.sort === "near") map.setView([state.here.lat, state.here.lng], 15);
+    fitHere = !!state.here;
+    const lb = document.querySelector(".locate");
+    if (lb) { lb.classList.toggle("on", !!state.here); lb.classList.remove("busy"); }
+    if (state.here && !filtersChanged) map.setView([state.here.lat, state.here.lng], 15);
     else if (items.length) map.fitBounds(L.latLngBounds(items.map((p) => [p.lat, p.lng])), { padding: [24, 24], maxZoom: 16 });
+  }
+
+  function locateMe() {
+    const b = document.querySelector(".locate");
+    const msg = $("map-msg");
+    msg.hidden = true;
+    if (state.here) { map.setView([state.here.lat, state.here.lng], 15); return; }
+    b.classList.add("busy");
+    nearMe(() => {
+      b.classList.remove("busy");
+      msg.textContent = "Could not get your location. Allow location for this site in your browser settings.";
+      msg.hidden = false;
+    });
   }
 
   async function setView(v, scroll) {
@@ -287,7 +320,8 @@
 
   function open(p, fromHistory) {
     tick();
-    if (openId === null) opener = document.activeElement;
+    const wasOpen = openId !== null;
+    if (!wasOpen) opener = document.activeElement;
     openId = p.id;
     const fig = $("d-photo");
     fig.hidden = !p.photo;
@@ -350,6 +384,7 @@
     const ll = `${p.lat},${p.lng}`;
     $("d-map").src = `https://maps.google.com/maps?q=${ll}&z=16&output=embed`;
     $("d-dir").href = `https://www.google.com/maps/dir/?api=1&destination=${ll}`;
+    $("d-dir-quick").href = $("d-dir").href;
     $("d-photos").href = p.gmap || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}%20${ll}`;
     $("d-gmap").href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}%20${ll}`;
     const title = encodeURIComponent(`Wrong info: ${p.name} (${p.id})`);
@@ -357,12 +392,87 @@
     $("d-report").href = `${REPO}/issues/new?title=${title}&body=${body}`;
 
     $("sheet").hidden = false;
-    document.body.style.overflow = "hidden";
+    const onMap = state.view === "map" && !!map;
+    $("sheet").classList.toggle("on-map", onMap);
+    document.body.style.overflow = onMap ? "" : "hidden";
+    $("sheet").querySelector(".sheet-card").scrollTop = 0;
+    // On the map the card opens half way, so the pin stays in view. In the list it opens fully.
+    setSheet(onMap ? (wasOpen && sheetMode !== "full" ? sheetMode : "half") : "full");
+    if (onMap) keepPinVisible(p);
     if (!fromHistory && location.hash !== `#${p.id}`) {
-      history.pushState({ place: p.id }, "", `#${p.id}`);
-      pushed = true;
+      // Moving from pin to pin replaces the entry, so one Back still closes the card.
+      if (wasOpen && pushed) history.replaceState({ place: p.id }, "", `#${p.id}`);
+      else { history.pushState({ place: p.id }, "", `#${p.id}`); pushed = true; }
     }
-    $("sheet").querySelector(".close").focus();
+    if (!wasOpen) $("sheet").querySelector(".close").focus({ preventScroll: true });
+  }
+
+  // The card has three heights, like Google Maps: peek (name and Directions), half and full.
+  let sheetMode = "full";
+  const sheetHeights = () => {
+    const vh = window.innerHeight;
+    return { peek: Math.min($("sheet-head").offsetHeight + 24, vh * 0.4), half: vh * 0.5, full: vh * 0.92 };
+  };
+  function setSheet(mode) {
+    sheetMode = mode;
+    const card = $("sheet").querySelector(".sheet-card");
+    card.style.height = mode === "full" && !$("sheet").classList.contains("on-map") ? "" : sheetHeights()[mode] + "px";
+    $("sheet").dataset.mode = mode;
+    $("grab").setAttribute("aria-label", mode === "full" ? "Show less of this card" : "Show more of this card");
+  }
+  function keepPinVisible(p) {
+    // Pan so the pin sits in the middle of the map area that the card leaves free.
+    const box = $("mapbox").getBoundingClientRect();
+    const free = window.innerHeight - sheetHeights()[sheetMode];
+    const pt = map.latLngToContainerPoint([p.lat, p.lng]);
+    const want = (Math.max(box.top, 0) + free) / 2;
+    map.panBy([pt.x - box.width / 2, box.top + pt.y - want], { animate: true });
+  }
+
+  // Drag the top of the card up or down. A short tap on the handle steps to the next height.
+  function setupSheetDrag() {
+    const head = $("sheet-head");
+    const card = $("sheet").querySelector(".sheet-card");
+    let startY = 0, startH = 0, dragging = false, moved = false, onGrab = false;
+    head.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("a, .close")) return;
+      if (window.matchMedia("(min-width: 760px)").matches && !$("sheet").classList.contains("on-map")) return;
+      dragging = true; moved = false;
+      onGrab = !!e.target.closest("#grab"); // pointer capture makes later events report the head, not the handle
+      startY = e.clientY; startH = card.getBoundingClientRect().height;
+      card.classList.add("dragging");
+      head.setPointerCapture(e.pointerId);
+    });
+    head.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dy = e.clientY - startY;
+      if (Math.abs(dy) > 6) moved = true;
+      const h = sheetHeights();
+      card.style.height = Math.max(h.peek * 0.8, Math.min(h.full, startH - dy)) + "px";
+    });
+    const end = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      card.classList.remove("dragging");
+      if (!moved) {
+        if (onGrab) setSheet(sheetMode === "full" ? "half" : "full");
+        else if (sheetMode === "peek") setSheet("half");
+        else setSheet(sheetMode);
+        return;
+      }
+      const now = card.getBoundingClientRect().height;
+      const h = sheetHeights();
+      // In the list there is no map behind the card, so a drag down closes it instead of peeking.
+      if (!$("sheet").classList.contains("on-map")) {
+        if (now < h.full * 0.75) close(); else setSheet("full");
+        return;
+      }
+      const pick = Object.entries(h).sort((a, b) => Math.abs(a[1] - now) - Math.abs(b[1] - now))[0][0];
+      setSheet(pick);
+      if (pick === "full") card.scrollTop = 0;
+    };
+    head.addEventListener("pointerup", end);
+    head.addEventListener("pointercancel", end);
   }
 
   // fromHistory: the URL already changed (Back, or a #id link), so leave history alone.
@@ -371,10 +481,19 @@
     const id = openId;
     openId = null;
     $("sheet").hidden = true;
+    $("sheet").classList.remove("on-map");
+    $("sheet").querySelector(".sheet-card").style.height = "";
+    sheetMode = "full";
     $("d-map").src = "about:blank";
     document.body.style.overflow = "";
     if (!fromHistory) {
-      if (pushed) history.back(); // the popstate that follows finds no open card and does nothing
+      if (pushed) {
+        history.back(); // the popstate that follows finds no open card and does nothing
+        // After an earlier Back, Chrome sometimes ignores this back(). Clear the #id by hand then.
+        setTimeout(() => {
+          if (openId === null && location.hash === `#${id}`) history.replaceState(null, "", location.pathname + location.search);
+        }, 400);
+      }
       else history.replaceState(null, "", location.pathname + location.search);
     }
     pushed = false;
@@ -689,9 +808,9 @@
     render();
   }
 
-  function nearMe() {
+  function nearMe(onFail) {
     const btn = $("near");
-    if (!navigator.geolocation) { btn.textContent = "Location not available"; resetSort(); return; }
+    if (!navigator.geolocation) { btn.textContent = "Location not available"; resetSort(); if (onFail) onFail(); return; }
     btn.textContent = "Finding you...";
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -702,7 +821,7 @@
         btn.textContent = "Location on";
         render();
       },
-      () => { btn.textContent = "Location blocked. Try again"; resetSort(); },
+      () => { btn.textContent = "Location blocked. Try again"; resetSort(); if (onFail) onFail(); },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
   }
 
@@ -724,6 +843,8 @@
       if (b && b.dataset.view !== state.view) setView(b.dataset.view, true);
     });
     $("sheet").addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) close(); });
+    setupSheetDrag();
+    window.addEventListener("resize", () => { if (openId !== null) setSheet(sheetMode); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheet").hidden) close(); });
     // Both fire for a #id link; syncHash does nothing the second time.
     window.addEventListener("popstate", syncHash);

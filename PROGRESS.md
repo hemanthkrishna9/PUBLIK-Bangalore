@@ -181,3 +181,11 @@ Next session:
 - About 350 "Not found" requests are automated hacking scans (`/.env`, `/.git`, `phpinfo.php`, `/CLAUDE.md`). Nothing sensitive is served.
 - Missing `favicon.ico` and `apple-touch-icon.png`: phones ask for them, so add them.
 - Arka's open ideas (not built): day-trip and cycling collections, tour operators and invites, a donate button with GBA, an Instagram page. Also check the "PUBLIK" name, because publikhq.com is an unrelated software company with the same name.
+
+## Update 2026-10-10 (Google Maps style card and locate button)
+
+- The Reddit commenter tested the map and asked for two things: show the user's location, and copy the Google Maps card with three states (minimized, half, full).
+- The map has a locate button under the zoom buttons. It shows a blue dot and centers on you. It uses the same location as "Near me".
+- The place card has three heights: peek (name, status and a Directions button), half and full. Drag the top part of the card, or tap the handle. On the map, a pin opens the card at half height with no dark backdrop, and the map pans so the pin stays visible. Tapping another pin swaps the card. In the list, the card opens at full height, and dragging it down closes it. On desktop, the list card stays a centered dialog.
+- Fixes: with location on, a search on the map stayed on you instead of moving to the result. With cluster animation on, a pin could stay hidden after a one-level zoom, so the animation is off. After the phone Back button closed a card, the next card closed with X kept its #id in the URL. That is now cleared.
+- Must be checked on a real phone: the drag feel on Android and iPhone.
