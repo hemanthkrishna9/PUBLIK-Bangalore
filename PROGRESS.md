@@ -173,3 +173,11 @@ Next session:
 - The home page now has a sideways row of cards under Surprise me. Each card is one sentence, for example "Someone checked into RT Nagar Public Library and marked it crowded", with the time and area. Tapping a card opens the place.
 - API: `GET /api/activity` in `src/worker.js`. It merges fresh one-tap reports (same visible times as the place card, "Closed now" only after two reports) with the newest "I went here" visit per place from the last 7 days. It returns at most 15 items. The row hides when there are none.
 - Owner and Arka: ask SBA friends to tap when they really visit a place, so the row has real content.
+
+## Update 2026-10-10 (traffic)
+
+- `scripts/traffic.py` reads Cloudflare analytics and splits out bots (link previews, crawlers, scanners). The command is at the top of the file. The free plan keeps only about 3 days of this data.
+- First two days: about 200 people (distinct IPs, bots removed), 157 from India. Peaks: the SBA WhatsApp post (9 Oct, 2 pm IST) and the Reddit post (9 Oct, 10 pm IST). 222 place cards opened, but only 12 one-tap reports and 4 "I went here". The gap between looking and tapping is the main problem now.
+- About 350 "Not found" requests are automated hacking scans (`/.env`, `/.git`, `phpinfo.php`, `/CLAUDE.md`). Nothing sensitive is served.
+- Missing `favicon.ico` and `apple-touch-icon.png`: phones ask for them, so add them.
+- Arka's open ideas (not built): day-trip and cycling collections, tour operators and invites, a donate button with GBA, an Instagram page. Also check the "PUBLIK" name, because publikhq.com is an unrelated software company with the same name.
