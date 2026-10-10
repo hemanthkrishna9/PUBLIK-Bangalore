@@ -226,8 +226,9 @@
     // The "you are here" dot is its own element. Drawing it on the pins' canvas erased the pins.
     if (state.here && !meDot) {
       meDot = L.marker([state.here.lat, state.here.lng], {
-        icon: L.divIcon({ className: "me-dot", iconSize: [20, 20] }), interactive: false, keyboard: false, zIndexOffset: 1000,
+        icon: L.divIcon({ className: "me-dot", iconSize: [22, 22] }), interactive: false, keyboard: false, zIndexOffset: 1000,
       }).addTo(map);
+      meDot.bindTooltip("You are here", { permanent: true, direction: "right", offset: [14, 0], className: "me-tip" });
     } else if (meDot && state.here) meDot.setLatLng([state.here.lat, state.here.lng]);
     // Move the map only when the filters or the location change, not on every redraw.
     // A new search or filter shows its results. Location turning on (or the map opening) centers on you.
@@ -238,15 +239,17 @@
     fitHere = !!state.here;
     const lb = document.querySelector(".locate");
     if (lb) { lb.classList.toggle("on", !!state.here); lb.classList.remove("busy"); }
-    if (state.here && !filtersChanged) map.setView([state.here.lat, state.here.lng], 15);
-    else if (items.length) map.fitBounds(L.latLngBounds(items.map((p) => [p.lat, p.lng])), { padding: [24, 24], maxZoom: 16 });
+    // No animation here: a fit still animating when the location arrives would undo the move to you.
+    if (state.here && !filtersChanged) map.setView([state.here.lat, state.here.lng], ME_ZOOM, { animate: false });
+    else if (items.length) map.fitBounds(L.latLngBounds(items.map((p) => [p.lat, p.lng])), { padding: [24, 24], maxZoom: 16, animate: false });
   }
 
+  const ME_ZOOM = 16; // street level, where the groups split into single pins
   function locateMe() {
     const b = document.querySelector(".locate");
     const msg = $("map-msg");
     msg.hidden = true;
-    if (state.here) { map.setView([state.here.lat, state.here.lng], 15); return; }
+    if (state.here) { map.setView([state.here.lat, state.here.lng], ME_ZOOM); return; }
     b.classList.add("busy");
     nearMe(() => {
       b.classList.remove("busy");

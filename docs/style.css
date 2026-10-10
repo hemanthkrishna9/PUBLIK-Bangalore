@@ -401,3 +401,8 @@ footer p { margin: 0 0 6px; }
 .locate.busy svg { animation: locate-spin 1s linear infinite; }
 @keyframes locate-spin { to { transform: rotate(360deg); } }
 .me-dot { border-radius: 50%; background: #1a73e8; border: 3px solid #ffffff; box-shadow: 0 0 0 6px rgba(26, 115, 232, .25), 0 1px 4px rgba(0, 0, 0, .4); }
+.me-dot { animation: me-pulse 2s infinite; }
+@keyframes me-pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(26, 115, 232, .35), 0 1px 4px rgba(0, 0, 0, .4); } 50% { box-shadow: 0 0 0 12px rgba(26, 115, 232, .12), 0 1px 4px rgba(0, 0, 0, .4); } }
+@media (prefers-reduced-motion: reduce) { .me-dot { animation: none; } }
+.leaflet-tooltip.me-tip { background: #1a73e8; color: #ffffff; border: 0; font-weight: 700; font-size: .85rem; padding: 3px 9px; border-radius: 999px; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
+.leaflet-tooltip.me-tip::before { border-right-color: #1a73e8; }
