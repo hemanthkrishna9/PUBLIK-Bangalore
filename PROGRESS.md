@@ -164,4 +164,5 @@ Next session:
 - Tiles: tile.openstreetmap.org, with no API key and no bill. Its usage policy allows only light use. CARTO tiles now return "API key required" (checked 2026-10-10). If traffic grows, move to OpenFreeMap or a paid tile host. Dark mode darkens the light tiles with a CSS filter.
 - Why not a Google map: it needs an API key on a billing account, and charges after the free monthly quota. The place card map and Directions still use Google.
 - Fix: the "I went here" answer buttons used the class `chip`, which the category chips also use. Picking a category changed them too. They now use `pick`.
+- Above the map, a hint says "Numbers are groups of places. Tap one to zoom in.", with a color key. Each group has a ring split by the categories inside it.
 - Next from feedback: Arka's "live activity" carousel on the home page. It must hide itself when there are fewer than about five recent items.

@@ -176,9 +176,27 @@
     }).addTo(map);
     pins = L.markerClusterGroup({
       showCoverageOnHover: false, maxClusterRadius: 45, disableClusteringAtZoom: 16,
-      iconCreateFunction: (c) => L.divIcon({ html: `<span>${c.getChildCount()}</span>`, className: "cluster", iconSize: [38, 38] }),
+      iconCreateFunction: groupIcon,
     });
     map.addLayer(pins);
+  }
+
+  // A group shows its count, with a ring split by the share of each category inside it.
+  function groupIcon(c) {
+    const n = {};
+    for (const m of c.getAllChildMarkers()) n[m.options.cat] = (n[m.options.cat] || 0) + 1;
+    const total = c.getChildCount();
+    let at = 0;
+    const stops = Object.keys(PIN).filter((k) => n[k]).map((k) => {
+      const from = at;
+      at += (n[k] / total) * 360;
+      return `${PIN[k]} ${from}deg ${at}deg`;
+    });
+    const size = total < 10 ? 36 : total < 100 ? 42 : 48;
+    return L.divIcon({
+      html: `<span style="background:conic-gradient(${stops.join(",")})"><b>${total}</b></span>`,
+      className: "cluster", iconSize: [size, size],
+    });
   }
 
   function drawMap(items) {
@@ -186,7 +204,7 @@
     pins.clearLayers();
     pins.addLayers(items.map((p) => {
       const m = L.circleMarker([p.lat, p.lng], {
-        radius: 8, weight: 2, color: "#ffffff", fillColor: PIN[p.cat], fillOpacity: 1,
+        radius: 8, weight: 2, color: "#ffffff", fillColor: PIN[p.cat], fillOpacity: 1, cat: p.cat,
       });
       m.bindTooltip(p.name, { direction: "top", offset: [0, -8] });
       m.on("click", () => open(p));
