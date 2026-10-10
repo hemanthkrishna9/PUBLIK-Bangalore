@@ -20,7 +20,7 @@
   const SRC_LABEL = { bbmp: "BBMP park list", bbmp16: "BBMP park list 2016", osm: "OpenStreetMap" };
 
   const $ = (id) => document.getElementById(id);
-  const state = { places: [], cat: "all", q: "", openOnly: false, freeOnly: false, accessOnly: false, here: null, shown: PAGE, sort: "default" };
+  const state = { places: [], cat: "all", q: "", openOnly: false, freeOnly: false, accessOnly: false, here: null, shown: PAGE, sort: "default", view: "list" };
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const ROW_TAGS = ["Free", "Paid", "Wheelchair access"];
   const hasFeat = (p, f) => !!p.feat && p.feat.includes(f);
@@ -129,11 +129,110 @@
   function render() {
     tick();
     const items = filtered();
-    $("count").textContent = `${items.length} places`;
+    $("count").textContent = `${items.length} ${items.length === 1 ? "place" : "places"}`;
     $("empty").hidden = items.length > 0;
+    if (state.view === "map") { $("more").hidden = true; drawMap(items); return; }
     const list = $("list");
     list.replaceChildren(...items.slice(0, state.shown).map(row));
     $("more").hidden = items.length <= state.shown;
+  }
+
+  // Map view. Leaflet and its cluster plugin load only when someone opens the map.
+  // Tiles come from openstreetmap.org: no API key and no billing, but its usage policy allows only light use.
+  // CARTO now needs an API key (checked 2026-10-10). If traffic grows, move to OpenFreeMap or a paid host.
+  const LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
+  const CLUSTER = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/";
+  const PIN = { park: "#2e7d46", playground: "#e0a019", lake: "#2f6e9e", library: "#7a4e9c", toilet: "#2f8a8a" };
+  let map = null, pins = null, meDot = null, leafletLoad = null, fitKey = "";
+
+  const addCss = (href) => {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = href;
+    document.head.append(l);
+  };
+  const addJs = (src) => new Promise((ok, fail) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = ok;
+    s.onerror = fail;
+    document.head.append(s);
+  });
+  function loadLeaflet() {
+    if (!leafletLoad) {
+      addCss(LEAFLET + "leaflet.min.css");
+      addCss(CLUSTER + "MarkerCluster.min.css");
+      leafletLoad = addJs(LEAFLET + "leaflet.min.js").then(() => addJs(CLUSTER + "leaflet.markercluster.min.js"));
+      leafletLoad.catch(() => { leafletLoad = null; }); // allow a retry
+    }
+    return leafletLoad;
+  }
+
+  function makeMap() {
+    map = L.map("mapbox", { renderer: L.canvas({ tolerance: 8 }) }).setView([12.9716, 77.5946], 11);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+    pins = L.markerClusterGroup({
+      showCoverageOnHover: false, maxClusterRadius: 45, disableClusteringAtZoom: 16,
+      iconCreateFunction: (c) => L.divIcon({ html: `<span>${c.getChildCount()}</span>`, className: "cluster", iconSize: [38, 38] }),
+    });
+    map.addLayer(pins);
+  }
+
+  function drawMap(items) {
+    if (!map) return;
+    pins.clearLayers();
+    pins.addLayers(items.map((p) => {
+      const m = L.circleMarker([p.lat, p.lng], {
+        radius: 8, weight: 2, color: "#ffffff", fillColor: PIN[p.cat], fillOpacity: 1,
+      });
+      m.bindTooltip(p.name, { direction: "top", offset: [0, -8] });
+      m.on("click", () => open(p));
+      return m;
+    }));
+    if (meDot) { meDot.remove(); meDot = null; }
+    if (state.here) {
+      meDot = L.circleMarker([state.here.lat, state.here.lng], {
+        radius: 8, weight: 3, color: "#ffffff", fillColor: "#1a73e8", fillOpacity: 1, interactive: false,
+      }).addTo(map);
+    }
+    // Move the map only when the filters or the location change, not on every redraw.
+    const key = [state.cat, state.q.trim(), state.openOnly, state.freeOnly, state.accessOnly, !!state.here].join("|");
+    if (key === fitKey) return;
+    fitKey = key;
+    if (state.here && state.sort === "near") map.setView([state.here.lat, state.here.lng], 15);
+    else if (items.length) map.fitBounds(L.latLngBounds(items.map((p) => [p.lat, p.lng])), { padding: [24, 24], maxZoom: 16 });
+  }
+
+  async function setView(v, scroll) {
+    state.view = v;
+    try { localStorage.setItem("publik:view", v); } catch {}
+    document.querySelectorAll("#viewsw button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === v));
+    const onMap = v === "map";
+    $("mapview").hidden = !onMap;
+    $("list").hidden = onMap;
+    if (!onMap) { render(); return; }
+    const msg = $("map-msg");
+    msg.hidden = true;
+    try {
+      await loadLeaflet();
+    } catch {
+      msg.textContent = "Could not load the map. Check your connection and tap Map again.";
+      msg.hidden = false;
+      return;
+    }
+    if (state.view !== "map") return;
+    if (!map) makeMap();
+    map.invalidateSize();
+    fitKey = "";
+    render();
+    if (scroll) {
+      // Bring the map up under the pinned search bar.
+      const top = $("mapview").getBoundingClientRect().top + window.scrollY - document.querySelector(".top").offsetHeight - 12;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    }
   }
 
   function row(p) {
@@ -385,7 +484,7 @@
       fs.firstChild.textContent = text;
       fs.lastChild.append(...opts.map(([a, label]) => {
         const l = document.createElement("label");
-        l.className = "tap chip";
+        l.className = "tap pick";
         l.innerHTML = `<input type="radio" name="${q}" value="${a}"><span></span>`;
         l.lastChild.textContent = label;
         return l;
@@ -558,6 +657,10 @@
       if (state.sort === "near" && !state.here) nearMe(); else render();
     });
     $("more").addEventListener("click", () => { state.shown += PAGE; render(); });
+    $("viewsw").addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (b && b.dataset.view !== state.view) setView(b.dataset.view, true);
+    });
     $("sheet").addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) close(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheet").hidden) close(); });
     // Both fire for a #id link; syncHash does nothing the second time.
@@ -568,7 +671,9 @@
     const data = await res.json();
     state.places = data.places;
     $("built").textContent = `Data updated ${data.built}.`;
-    render();
+    let saved = "list";
+    try { saved = localStorage.getItem("publik:view") || "list"; } catch {}
+    if (saved === "map") setView("map"); else render();
     syncHash();
   }
 

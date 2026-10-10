@@ -155,3 +155,13 @@ Next session:
 - [ ] Owner: send the Bengawalk Instagram DM, then note any reply here.
 - [ ] Watch "I went here" use for two weeks (until 2026-10-24). If people use it, plan the optional photo step. If not, rethink the questions or the placement on the card.
 - [ ] The open items from the soft launch section still apply (saved-report message, privacy note, analytics) before any wide post.
+
+## Update 2026-10-10 (map view)
+
+- A Reddit commenter on the r/bangalore post (19 upvotes, about 4K views) asked for a map view "or both views". There is now a List and Map switch above the results. List stays the default, and the choice is remembered on that device.
+- The map uses the same search, category and filters as the list. Nearby pins group into numbered circles. Tapping a pin opens the usual place card. With location on, a blue dot shows the visitor.
+- Leaflet 1.9.4 and Leaflet.markercluster 1.5.3 load from cdnjs only when someone opens the map.
+- Tiles: tile.openstreetmap.org, with no API key and no bill. Its usage policy allows only light use. CARTO tiles now return "API key required" (checked 2026-10-10). If traffic grows, move to OpenFreeMap or a paid tile host. Dark mode darkens the light tiles with a CSS filter.
+- Why not a Google map: it needs an API key on a billing account, and charges after the free monthly quota. The place card map and Directions still use Google.
+- Fix: the "I went here" answer buttons used the class `chip`, which the category chips also use. Picking a category changed them too. They now use `pick`.
+- Next from feedback: Arka's "live activity" carousel on the home page. It must hide itself when there are fewer than about five recent items.
