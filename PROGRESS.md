@@ -134,9 +134,24 @@ Next session:
 
 ## Update 2026-10-10 ("I went here")
 
-- New section on every place card except toilets: "Going for the first time?". It shows what past visitors said, for people who are anxious about a first visit. The idea came from a friend: "activate a public space" for people who never go.
+- New section on every place card except toilets: "Going for the first time?". It shows what past visitors said, for people who are anxious about a first visit. The idea came from Arka: "activate a public space" for people who never go.
 - A visitor taps "I went here" and answers up to three questions with taps: "Could you just walk in?", "How did it feel?" and "Easy for a first-timer?". The card shows the most common answer per question, for example "Anyone can walk in (4 of 5)".
 - API: `GET /api/visits?place=` and `POST /api/visit` in `src/worker.js`, table `visits` in `src/schema.sql`. Limits: one visit per visitor per place a day, 20 per place a day, 1,000 a day in total. Rows are kept 365 days. Visitor keys use the same daily-salted hash as reports and are cleared after 24 hours.
 - No photos yet. If people use this, the next step is an optional photo with a no-faces rule and manual approval.
 - Fix: buttons with the `hidden` attribute now hide (this also affects "Show 50 more").
-- Before the deploy, create the table on the remote database with `wrangler d1 execute publik --remote --command "<SQL>"`, because `--file` fails behind Zscaler.
+- The `visits` table was created on the remote database with `wrangler d1 execute publik --remote --command "<SQL>"`, because `--file` fails behind Zscaler.
+- Deployed 2026-10-10 (version 892f06ae), commit 4f183b6. Not yet checked on a phone.
+- Why taps and not photos first: the anxiety is about not knowing what happens inside (ID, silence, staring), and a photo does not answer that. Photos of parks and playgrounds show children and faces, so they need a no-faces rule and manual approval under the DPDP Act. Taps take 5 seconds, so they test cheaply whether people will post at all. The one-line version was sent to Arka.
+
+## Update 2026-10-10 (Bengawalk outreach)
+
+- Arka suggested contacting Bengawalk (bengawalk.com), a Bengaluru team of designers and filmmakers. Their work overlaps with PUBLIK: parks for children, public seating, lakes, Namma Raste and a Living Lab.
+- Their site lists no email. Contact options: Instagram DM (instagram.com/bengawalk), X (x.com/bengawalk) or their project form. The owner chose an Instagram DM. A casual draft that credits Arka is ready.
+- The expected outcome is feedback or a share, not a joint build.
+
+### Open items
+
+- [ ] Owner: tap "I went here" on one or two known places from a phone, so the section is not empty when Bengawalk looks.
+- [ ] Owner: send the Bengawalk Instagram DM, then note any reply here.
+- [ ] Watch "I went here" use for two weeks (until 2026-10-24). If people use it, plan the optional photo step. If not, rethink the questions or the placement on the card.
+- [ ] The open items from the soft launch section still apply (saved-report message, privacy note, analytics) before any wide post.
