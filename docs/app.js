@@ -175,13 +175,11 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
     const Locate = L.Control.extend({
-      options: { position: "topleft" },
+      options: { position: "bottomright" },
       onAdd() {
         const b = L.DomUtil.create("button", "locate");
         b.type = "button";
-        b.title = "Show my location";
-        b.setAttribute("aria-label", "Show my location");
-        b.innerHTML = svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/>');
+        b.innerHTML = svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/>') + "<span>My location</span>";
         L.DomEvent.disableClickPropagation(b);
         b.addEventListener("click", locateMe);
         return b;
@@ -279,6 +277,12 @@
     map.invalidateSize();
     fitKey = "";
     render();
+    // If this visitor already allowed location, show their dot without asking again.
+    if (!state.here && navigator.permissions) {
+      navigator.permissions.query({ name: "geolocation" })
+        .then((r) => { if (r.state === "granted" && !state.here) nearMe(); })
+        .catch(() => {});
+    }
     if (scroll) {
       // Bring the map up under the pinned search bar.
       const top = $("mapview").getBoundingClientRect().top + window.scrollY - document.querySelector(".top").offsetHeight - 12;

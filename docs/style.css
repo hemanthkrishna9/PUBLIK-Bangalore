@@ -391,11 +391,12 @@ footer p { margin: 0 0 6px; }
 @media (prefers-reduced-motion: reduce) { .sheet-card { transition: none; } }
 
 /* Map: show my location */
-.locate {
-  width: 34px; height: 34px; display: grid; place-items: center; padding: 0; cursor: pointer;
-  background: #ffffff; color: #333333; border: 2px solid rgba(0, 0, 0, .2); border-radius: 4px; background-clip: padding-box;
+.leaflet-control.locate {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px 0 14px; margin: 0 12px 12px 0;
+  border: 0; border-radius: var(--radius-pill); cursor: pointer; background: #ffffff; color: #1f5132;
+  font-family: var(--display); font-size: 1rem; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
 }
-.locate svg { width: 20px; height: 20px; }
+.locate svg { width: 22px; height: 22px; flex: none; }
 .locate.on { color: #1a73e8; }
 .locate.busy svg { animation: locate-spin 1s linear infinite; }
 @keyframes locate-spin { to { transform: rotate(360deg); } }
