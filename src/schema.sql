@@ -11,3 +11,16 @@ CREATE INDEX IF NOT EXISTS reports_who_ts ON reports (who, ts);
 CREATE INDEX IF NOT EXISTS reports_ts ON reports (ts);
 -- One random salt per UTC day. Old salts are deleted, so old hashes cannot be reversed.
 CREATE TABLE IF NOT EXISTS salts (day TEXT PRIMARY KEY, salt TEXT NOT NULL);
+-- "I went here" visits: three optional tap answers that help first-timers. Kept 365 days.
+CREATE TABLE IF NOT EXISTS visits (
+  id INTEGER PRIMARY KEY,
+  place TEXT NOT NULL,
+  ts INTEGER NOT NULL,
+  who TEXT,
+  entry TEXT,
+  feel TEXT,
+  first TEXT
+);
+CREATE INDEX IF NOT EXISTS visits_place_ts ON visits (place, ts);
+CREATE INDEX IF NOT EXISTS visits_who_ts ON visits (who, ts);
+CREATE INDEX IF NOT EXISTS visits_ts ON visits (ts);

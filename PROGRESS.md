@@ -131,3 +131,12 @@ Next session:
 2. Recover the 671 BBMP parks without coordinates (`scripts/geocode_bbmp.py` exists, but only accept leisure/park matches).
 3. A report form that needs no GitHub account.
 4. Decide whether to remove the Cloudflare account ID from git history (commit d33a926).
+
+## Update 2026-10-10 ("I went here")
+
+- New section on every place card except toilets: "Going for the first time?". It shows what past visitors said, for people who are anxious about a first visit. The idea came from a friend: "activate a public space" for people who never go.
+- A visitor taps "I went here" and answers up to three questions with taps: "Could you just walk in?", "How did it feel?" and "Easy for a first-timer?". The card shows the most common answer per question, for example "Anyone can walk in (4 of 5)".
+- API: `GET /api/visits?place=` and `POST /api/visit` in `src/worker.js`, table `visits` in `src/schema.sql`. Limits: one visit per visitor per place a day, 20 per place a day, 1,000 a day in total. Rows are kept 365 days. Visitor keys use the same daily-salted hash as reports and are cleared after 24 hours.
+- No photos yet. If people use this, the next step is an optional photo with a no-faces rule and manual approval.
+- Fix: buttons with the `hidden` attribute now hide (this also affects "Show 50 more").
+- Before the deploy, create the table on the remote database with `wrangler d1 execute publik --remote --command "<SQL>"`, because `--file` fails behind Zscaler.

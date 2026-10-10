@@ -183,7 +183,7 @@ main { padding: 4px 0 0; }
 
 /* Place card */
 .sheet { position: fixed; inset: 0; z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
-.sheet[hidden] { display: none; }
+.sheet[hidden], .btn[hidden] { display: none; }
 .sheet-bg { position: absolute; inset: 0; background: rgba(8, 20, 12, .5); }
 .sheet-card {
   position: relative; width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto;
@@ -245,6 +245,23 @@ main { padding: 4px 0 0; }
 .tap:hover:not(:disabled) { border-color: var(--canopy); }
 .tap:disabled { opacity: .4; cursor: default; }
 #d-tap-msg { min-height: 1.4em; margin: 8px 0 0; }
+
+/* I went here: tips from past visitors for first-timers */
+#d-visit { margin-top: 18px; }
+.visit-sum p { margin: 0 0 6px; }
+.visit-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--wash); border-radius: var(--radius-field); }
+.visit-row span { color: var(--muted); }
+.visit-row b { text-align: right; }
+.btn.went { width: 100%; margin-top: 10px; min-height: 46px; }
+.went:disabled { opacity: .6; cursor: default; }
+.visit-form fieldset { border: 0; padding: 0; margin: 12px 0 0; min-width: 0; }
+.visit-form legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+.chip { display: flex; align-items: center; justify-content: center; text-align: center; position: relative; }
+.chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.chip:has(input:checked) { border-color: var(--canopy); background: var(--canopy); color: var(--paper); }
+.chip:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+#d-visit-msg { min-height: 1.4em; margin: 8px 0 0; }
+.small { font-size: .82rem; }
 
 footer { padding: 24px 16px 40px; color: var(--muted); font-size: .82rem; }
 footer p { margin: 0 0 6px; }

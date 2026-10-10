@@ -27,6 +27,15 @@
   const KINDS = [["clean", "Clean"], ["dirty", "Dirty"], ["crowded", "Crowded"], ["quiet", "Quiet"], ["open", "Open now"], ["closed", "Closed now"]];
   const KIND_LABEL = Object.fromEntries(KINDS);
   const TAP_GAP = 30 * 60 * 1000; // one tap per kind per place every 30 minutes
+  // "I went here": [key, question, summary label, [[answer, button label, summary text], ...]].
+  const VISIT_Q = [
+    ["entry", "Could you just walk in?", "Entry",
+      [["walkin", "Yes, walked in", "Anyone can walk in"], ["id", "Needed ID", "You need an ID"], ["member", "Members only", "Members only"]]],
+    ["feel", "How did it feel?", "Feels",
+      [["quiet", "Quiet", "Quiet"], ["lively", "Lively", "Lively"], ["crowded", "Crowded", "Crowded"]]],
+    ["first", "Easy for a first-timer?", "First-timers",
+      [["yes", "Yes", "Easy"], ["okay", "Okay", "Okay"], ["no", "Not really", "Not easy"]]],
+  ];
 
   // Formatters are costly to build, so make them once.
   const HM_FMT = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -218,6 +227,7 @@
 
     $("d-rating").textContent = p.reviews ? `${ratingText(p)} on Google Maps` : "";
     loadReports(p);
+    loadVisits(p);
     $("d-feat").replaceChildren(...(p.feat || []).map((f) => { const s = document.createElement("span"); s.textContent = f; return s; }));
 
     const ll = `${p.lat},${p.lng}`;
@@ -335,6 +345,122 @@
     }
     if (reportsFor === p.id) drawTaps(p);
   }
+
+  // "I went here": tap answers from past visitors, for people who have never been.
+  const visitKey = (id) => `publik:visit:${id}`;
+  const visitedToday = (id) => {
+    try { return Date.now() - (+localStorage.getItem(visitKey(id)) || 0) < 24 * 3600 * 1000; } catch { return false; }
+  };
+
+  function showVisits(v) {
+    const box = $("d-visit-sum");
+    if (!v.n) {
+      box.textContent = "Nobody has told us yet. If you went, tap I went here and help the next person.";
+      return;
+    }
+    const head = document.createElement("p");
+    head.className = "muted";
+    head.textContent = `${v.n} ${v.n === 1 ? "visitor" : "visitors"} told us. Last one ${ago(v.last)}.`;
+    const rows = [head];
+    for (const [q, , short, opts] of VISIT_Q) {
+      const t = v.tally[q] || {};
+      const total = Object.values(t).reduce((a, b) => a + b, 0);
+      if (!total) continue;
+      const [best, n] = Object.entries(t).sort((a, b) => b[1] - a[1])[0];
+      const label = (opts.find((o) => o[0] === best) || [])[2] || best;
+      const d = document.createElement("p");
+      d.className = "visit-row";
+      d.innerHTML = "<span></span><b></b>";
+      d.children[0].textContent = short;
+      d.children[1].textContent = total > 1 ? `${label} (${n} of ${total})` : label;
+      rows.push(d);
+    }
+    box.replaceChildren(...rows);
+  }
+
+  function drawVisitForm() {
+    $("d-visit-qs").replaceChildren(...VISIT_Q.map(([q, text, , opts]) => {
+      const fs = document.createElement("fieldset");
+      fs.innerHTML = "<legend></legend><div class='taps'></div>";
+      fs.firstChild.textContent = text;
+      fs.lastChild.append(...opts.map(([a, label]) => {
+        const l = document.createElement("label");
+        l.className = "tap chip";
+        l.innerHTML = `<input type="radio" name="${q}" value="${a}"><span></span>`;
+        l.lastChild.textContent = label;
+        return l;
+      }));
+      return fs;
+    }));
+  }
+
+  function setWent(id) {
+    const b = $("d-went");
+    b.hidden = false;
+    b.disabled = visitedToday(id);
+    b.textContent = b.disabled ? "Thanks for telling us" : "I went here";
+  }
+
+  let visitsFor = null;
+  async function loadVisits(p) {
+    visitsFor = p.id;
+    const sec = $("d-visit");
+    sec.hidden = p.cat === "toilet";
+    if (sec.hidden) return;
+    $("d-visit-form").hidden = true;
+    $("d-visit-msg").textContent = "";
+    setWent(p.id);
+    $("d-visit-sum").textContent = "Loading...";
+    try {
+      const res = await fetch(`/api/visits?place=${encodeURIComponent(p.id)}`);
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      if (visitsFor === p.id) showVisits(data);
+    } catch {
+      if (visitsFor === p.id) sec.hidden = true; // no API, for example a local preview
+    }
+  }
+
+  $("d-went").addEventListener("click", () => {
+    drawVisitForm();
+    $("d-went").hidden = true;
+    $("d-visit-msg").textContent = "";
+    $("d-visit-form").hidden = false;
+    $("d-visit-form").querySelector("input").focus();
+  });
+  $("d-visit-cancel").addEventListener("click", () => {
+    $("d-visit-form").hidden = true;
+    setWent(visitsFor);
+    $("d-went").focus();
+  });
+  $("d-visit-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = visitsFor;
+    const form = $("d-visit-form");
+    const msg = $("d-visit-msg");
+    const body = { place: id };
+    for (const [q] of VISIT_Q) body[q] = (form.querySelector(`input[name="${q}"]:checked`) || {}).value || null;
+    if (!body.entry && !body.feel && !body.first) { msg.textContent = "Pick at least one answer."; return; }
+    const send = form.querySelector("button[type=submit]");
+    send.disabled = true;
+    msg.textContent = "Sending...";
+    try {
+      const res = await fetch("/api/visit", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not send. Try again later.");
+      try { localStorage.setItem(visitKey(id), String(Date.now())); } catch {}
+      if (visitsFor === id) {
+        const p = state.places.find((x) => x.id === id);
+        if (p) await loadVisits(p);
+        if (visitsFor === id) msg.textContent = "Saved. The next first-timer will see it.";
+      }
+    } catch (err) {
+      if (visitsFor === id) msg.textContent = err.message;
+    }
+    send.disabled = false;
+  });
 
   // Surprise me: a random good place that is open now, near you if location is on.
   function surprise() {
