@@ -24,11 +24,14 @@
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const ROW_TAGS = ["Free", "Paid", "Wheelchair access"];
   const hasFeat = (p, f) => !!p.feat && p.feat.includes(f);
-  const KINDS = [["clean", "Clean"], ["dirty", "Dirty"], ["crowded", "Crowded"], ["quiet", "Quiet"], ["open", "Open now"], ["closed", "Closed now"]];
+  const KINDS = [["clean", "Clean"], ["dirty", "Dirty"], ["crowded", "Crowded"], ["quiet", "Quiet"], ["open", "Open now"], ["closed", "Closed now"],
+    ["repair", "Under repair"], ["fixed", "Repair done"]];
+  const REPAIR_KINDS = new Set(["repair", "fixed"]);
+  const repairable = (p) => p.cat === "park" || p.cat === "playground";
   const KIND_LABEL = Object.fromEntries(KINDS);
   const TAP_GAP = 30 * 60 * 1000; // one tap per kind per place every 30 minutes
   // "I went here": [key, question, summary label, [[answer, button label, summary text], ...]].
-  const VISIT_Q = [
+  const VISIT_GENERAL = [
     ["entry", "Could you just walk in?", "Entry",
       [["walkin", "Yes, walked in", "Anyone can walk in"], ["id", "Needed ID", "You need an ID"], ["member", "Members only", "Members only"]]],
     ["feel", "How did it feel?", "Feels",
@@ -36,6 +39,19 @@
     ["first", "Easy for a first-timer?", "First-timers",
       [["yes", "Yes", "Easy"], ["okay", "Okay", "Okay"], ["no", "Not really", "Not easy"]]],
   ];
+  // Playgrounds and parks with a play area ask what a parent of a toddler needs to know.
+  // The fourth item of an answer is its tone: good, care or bad.
+  const VISIT_KIDS = [
+    ["toddler", "Good for toddlers?", "Toddlers",
+      [["yes", "Yes", "Good for toddlers", "good"], ["care", "With care", "With care", "care"], ["no", "No", "Not for toddlers", "bad"]]],
+    ["equip", "How is the equipment?", "Equipment",
+      [["good", "Good", "In good shape", "good"], ["broken", "Some broken", "Some broken", "care"], ["unsafe", "Unsafe", "Unsafe", "bad"]]],
+    ["ground", "What is the ground?", "Ground",
+      [["sand", "Sand", "Sand"], ["grass", "Grass", "Grass"], ["rubber", "Rubber mat", "Rubber mat"], ["hard", "Hard or rubble", "Hard or rubble", "bad"]]],
+  ];
+  const VISIT_Q = [...VISIT_GENERAL, ...VISIT_KIDS];
+  const forKids = (p) => p.cat === "playground" || (p.cat === "park" && hasFeat(p, "Play area"));
+  const visitSet = (p) => (forKids(p) ? VISIT_KIDS : VISIT_GENERAL);
 
   // Formatters are costly to build, so make them once.
   const HM_FMT = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -527,17 +543,22 @@
 
   function showReports(rows) {
     const box = $("d-live-list");
+    // Two reports are needed before the notice shows, so one wrong tap cannot scare people off.
+    const repair = rows.find((r) => r.kind === "repair" && r.n >= 2);
+    $("d-repair").hidden = !repair;
+    if (repair) $("d-repair").textContent = `Under repair. ${repair.n} people said so, last ${ago(repair.last)}.`;
+    if (repair) rows = rows.filter((r) => r !== repair); // the notice already says it
     if (!rows.length) { box.textContent = "No recent reports. Be the first to tell others."; return; }
     box.replaceChildren(...rows.map((r) => {
       const d = document.createElement("span");
-      d.className = "rep";
+      d.className = r.kind === "repair" ? "rep warn" : "rep";
       d.textContent = `${KIND_LABEL[r.kind]}, ${ago(r.last)}${r.n > 1 ? ` (${r.n})` : ""}`;
       return d;
     }));
   }
 
   function drawTaps(p) {
-    $("d-taps").replaceChildren(...KINDS.map(([k, label]) => {
+    $("d-taps").replaceChildren(...KINDS.filter(([k]) => repairable(p) || !REPAIR_KINDS.has(k)).map(([k, label]) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "tap";
@@ -554,6 +575,7 @@
     $("d-live").hidden = false;
     $("d-tap-msg").textContent = "";
     $("d-live-list").textContent = "Loading...";
+    $("d-repair").hidden = true;
     drawTaps(p);
     try {
       const res = await fetch(`/api/reports?place=${encodeURIComponent(p.id)}`);
@@ -578,7 +600,8 @@
       if (!res.ok) throw new Error(data.error || "Could not send. Try again later.");
       try { localStorage.setItem(tapKey(p.id, kind), String(Date.now())); } catch {}
       if (reportsFor !== p.id) return;
-      const rows = (p._reports || []).filter((r) => r.kind !== kind);
+      // "Repair done" clears "Under repair" at once for this visitor, as the server does for everyone.
+      const rows = (p._reports || []).filter((r) => r.kind !== kind && !(kind === "fixed" && r.kind === "repair"));
       const old = (p._reports || []).find((r) => r.kind === kind);
       p._reports = [{ kind, n: (old ? old.n : 0) + 1, last: Date.now() }, ...rows];
       showReports(p._reports);
@@ -596,17 +619,53 @@
     try { return Date.now() - (+localStorage.getItem(visitKey(id)) || 0) < 24 * 3600 * 1000; } catch { return false; }
   };
 
-  function showVisits(v) {
+  // The most common answer to one question, or null when nobody answered it.
+  function topAnswer(v, q, opts) {
+    const t = v.tally[q] || {};
+    const total = Object.values(t).reduce((a, b) => a + b, 0);
+    if (!total) return null;
+    // On a tie, show the more careful answer: a parent should hear about a risk.
+    const risk = (k) => ({ bad: 2, care: 1 })[(opts.find((x) => x[0] === k) || [])[3]] || 0;
+    const [best, n] = Object.entries(t).sort((a, b) => b[1] - a[1] || risk(b[0]) - risk(a[0]))[0];
+    const o = opts.find((x) => x[0] === best) || [best, best, best];
+    return { key: best, label: o[2], tone: o[3] || "", n, total };
+  }
+
+  function showKidVisits(v, box) {
+    const head = document.createElement("p");
+    head.className = "muted";
+    head.textContent = `${v.n} ${v.n === 1 ? "parent" : "parents"} told us. Last one ${ago(v.last)}.`;
+    const grid = document.createElement("div");
+    grid.className = "kid-grid";
+    for (const [q, , short, opts] of VISIT_KIDS) {
+      const a = topAnswer(v, q, opts);
+      const tile = document.createElement("div");
+      tile.className = `kid-tile ${a ? "tone-" + (a.tone || "plain") : "tone-none"}`;
+      tile.innerHTML = `${q === "ground" ? `<span class="swatch" aria-hidden="true"></span>` : ""}<span class="kt-q"></span><b class="kt-a"></b><span class="kt-n"></span>`;
+      if (q === "ground" && a) tile.querySelector(".swatch").classList.add("sw-" + a.key);
+      tile.querySelector(".kt-q").textContent = short;
+      tile.querySelector(".kt-a").textContent = a ? a.label : "Not known yet";
+      tile.querySelector(".kt-n").textContent = a && a.total > 1 ? `${a.n} of ${a.total}` : "";
+      grid.append(tile);
+    }
+    box.replaceChildren(head, grid);
+  }
+
+  function showVisits(v, p) {
     const box = $("d-visit-sum");
+    const kids = forKids(p);
     if (!v.n) {
-      box.textContent = "Nobody has told us yet. If you went, tap I went here and help the next person.";
+      box.textContent = kids
+        ? "No parent has rated this play area yet. If you went, tap I went here and help the next parent."
+        : "Nobody has told us yet. If you went, tap I went here and help the next person.";
       return;
     }
+    if (kids) { showKidVisits(v, box); return; }
     const head = document.createElement("p");
     head.className = "muted";
     head.textContent = `${v.n} ${v.n === 1 ? "visitor" : "visitors"} told us. Last one ${ago(v.last)}.`;
     const rows = [head];
-    for (const [q, , short, opts] of VISIT_Q) {
+    for (const [q, , short, opts] of VISIT_GENERAL) {
       const t = v.tally[q] || {};
       const total = Object.values(t).reduce((a, b) => a + b, 0);
       if (!total) continue;
@@ -622,16 +681,17 @@
     box.replaceChildren(...rows);
   }
 
-  function drawVisitForm() {
-    $("d-visit-qs").replaceChildren(...VISIT_Q.map(([q, text, , opts]) => {
+  function drawVisitForm(p) {
+    $("d-visit-qs").replaceChildren(...visitSet(p).map(([q, text, , opts]) => {
       const fs = document.createElement("fieldset");
       fs.innerHTML = "<legend></legend><div class='taps'></div>";
       fs.firstChild.textContent = text;
       fs.lastChild.append(...opts.map(([a, label]) => {
         const l = document.createElement("label");
         l.className = "tap pick";
-        l.innerHTML = `<input type="radio" name="${q}" value="${a}"><span></span>`;
+        l.innerHTML = `<input type="radio" name="${q}" value="${a}">${q === "ground" ? `<i class="swatch sw-${a}" aria-hidden="true"></i>` : ""}<span></span>`;
         l.lastChild.textContent = label;
+        if (q === "ground") l.classList.add("pick-ground");
         return l;
       }));
       return fs;
@@ -651,6 +711,7 @@
     const sec = $("d-visit");
     sec.hidden = p.cat === "toilet";
     if (sec.hidden) return;
+    $("d-visit-h").textContent = forKids(p) ? "For little kids" : "Going for the first time?";
     $("d-visit-form").hidden = true;
     $("d-visit-msg").textContent = "";
     setWent(p.id);
@@ -659,14 +720,14 @@
       const res = await fetch(`/api/visits?place=${encodeURIComponent(p.id)}`);
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
-      if (visitsFor === p.id) showVisits(data);
+      if (visitsFor === p.id) showVisits(data, p);
     } catch {
       if (visitsFor === p.id) sec.hidden = true; // no API, for example a local preview
     }
   }
 
   $("d-went").addEventListener("click", () => {
-    drawVisitForm();
+    drawVisitForm(state.places.find((x) => x.id === visitsFor));
     $("d-went").hidden = true;
     $("d-visit-msg").textContent = "";
     $("d-visit-form").hidden = false;
@@ -682,9 +743,10 @@
     const id = visitsFor;
     const form = $("d-visit-form");
     const msg = $("d-visit-msg");
+    const p = state.places.find((x) => x.id === id);
     const body = { place: id };
-    for (const [q] of VISIT_Q) body[q] = (form.querySelector(`input[name="${q}"]:checked`) || {}).value || null;
-    if (!body.entry && !body.feel && !body.first) { msg.textContent = "Pick at least one answer."; return; }
+    for (const [q] of visitSet(p)) body[q] = (form.querySelector(`input[name="${q}"]:checked`) || {}).value || null;
+    if (!Object.values(body).slice(1).some(Boolean)) { msg.textContent = "Pick at least one answer."; return; }
     const send = form.querySelector("button[type=submit]");
     send.disabled = true;
     msg.textContent = "Sending...";
@@ -696,9 +758,8 @@
       if (!res.ok) throw new Error(data.error || "Could not send. Try again later.");
       try { localStorage.setItem(visitKey(id), String(Date.now())); } catch {}
       if (visitsFor === id) {
-        const p = state.places.find((x) => x.id === id);
         if (p) await loadVisits(p);
-        if (visitsFor === id) msg.textContent = "Saved. The next first-timer will see it.";
+        if (visitsFor === id) msg.textContent = forKids(p) ? "Saved. The next parent will see it." : "Saved. The next first-timer will see it.";
         loadActivity();
       }
     } catch (err) {
@@ -712,16 +773,20 @@
   const REPORT_SAY = {
     clean: ["marked", "as clean"], dirty: ["marked", "as dirty"], crowded: ["said", "is crowded"],
     quiet: ["said", "is quiet"], open: ["found", "open"], closed: ["found", "closed"],
+    repair: ["said", "is under repair"], fixed: ["said repairs are done at", ""],
   };
   const VISIT_SAY = {
     feel: { quiet: "and found it quiet", lively: "and found it lively", crowded: "and marked it crowded" },
     entry: { walkin: "and walked right in", id: "and needed an ID to enter", member: "and found it members only" },
     first: { yes: "and says it is easy for first-timers", okay: "and says it is okay for first-timers", no: "and says it is not easy for first-timers" },
+    toddler: { yes: "and says it is good for toddlers", care: "and says toddlers need care there", no: "and says it is not for toddlers" },
+    equip: { good: "and found the equipment in good shape", broken: "and found some broken equipment", unsafe: "and says the equipment is unsafe" },
+    ground: { sand: "and found a sand floor", grass: "and found a grass floor", rubber: "and found a rubber mat floor", hard: "and found a hard floor" },
   };
   function activityText(it) {
     const who = it.n > 1 ? `${it.n} people` : "Someone";
     if (it.type === "report") return [`${who} ${REPORT_SAY[it.kind][0]}`, REPORT_SAY[it.kind][1]];
-    for (const q of ["feel", "entry", "first"]) if (it[q] && VISIT_SAY[q][it[q]]) return ["Someone checked into", VISIT_SAY[q][it[q]]];
+    for (const q of ["toddler", "equip", "feel", "entry", "first", "ground"]) if (it[q] && VISIT_SAY[q][it[q]]) return ["Someone checked into", VISIT_SAY[q][it[q]]];
     return ["Someone checked into", ""];
   }
 

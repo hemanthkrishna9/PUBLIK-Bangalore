@@ -1,7 +1,17 @@
 // PUBLIK API: anonymous one-tap reports and "I went here" visits. Every other path is served from ./docs.
 const HOUR = 3600 * 1000;
 // How long each kind of report stays visible, in hours.
-const KINDS = { clean: 48, dirty: 48, crowded: 3, quiet: 3, open: 3, closed: 3 };
+// "Under repair" lasts two weeks, because repairs take that long. "Repair done" clears it.
+const KINDS = { clean: 48, dirty: 48, crowded: 3, quiet: 3, open: 3, closed: 3, repair: 336, fixed: 48 };
+const MAX_HOURS = Math.max(...Object.values(KINDS));
+// One wrong tap must not mark a place closed or under repair, so these show only when two people agree.
+const NEED_TWO = new Set(["closed", "repair"]);
+
+// Drop reports that other reports overrule, and the ones that still need a second person.
+function visibleReports(by) {
+  if (by.repair && by.fixed && by.fixed.last > by.repair.last) delete by.repair;
+  return Object.values(by).filter((r) => !NEED_TWO.has(r.kind) || r.n >= 2);
+}
 const LIMITS = { global24h: 2000, place24h: 50, who1h: 60, sameGap: 30 * 60 * 1000 };
 const ID_RE = /^[\w.-]{1,40}$/;
 // "I went here" answers. Every question is optional, but a visit needs at least one answer.
@@ -9,6 +19,10 @@ const VISIT_Q = {
   entry: ["walkin", "id", "member"],
   feel: ["quiet", "lively", "crowded"],
   first: ["yes", "okay", "no"],
+  // Playgrounds and parks with a play area: safety for small children.
+  equip: ["good", "broken", "unsafe"],
+  ground: ["sand", "grass", "rubber", "hard"],
+  toddler: ["yes", "care", "no"],
 };
 const VISIT_LIMITS = { global24h: 1000, place24h: 20, days: 365 };
 
@@ -53,15 +67,14 @@ async function getReports(url, env) {
   const now = Date.now();
   const { results } = await env.DB.prepare(
     "SELECT kind, ts FROM reports WHERE place = ? AND ts > ? ORDER BY ts DESC LIMIT 500",
-  ).bind(place, now - 48 * HOUR).all();
+  ).bind(place, now - MAX_HOURS * HOUR).all();
   const by = {};
   for (const r of results) {
     if (now - r.ts > KINDS[r.kind] * HOUR) continue;
     const b = (by[r.kind] ||= { kind: r.kind, n: 0, last: r.ts });
     b.n++;
   }
-  // One "Closed now" report is too easy to fake, so show it only when two people agree.
-  const reports = Object.values(by).filter((r) => r.kind !== "closed" || r.n >= 2).sort((a, b) => b.last - a.last);
+  const reports = visibleReports(by).sort((a, b) => b.last - a.last);
   return json({ reports });
 }
 
@@ -104,23 +117,23 @@ async function postReport(req, env, ctx) {
 async function getActivity(env) {
   const now = Date.now();
   const [reps, vis] = await env.DB.batch([
-    env.DB.prepare("SELECT place, kind, ts FROM reports WHERE ts > ? ORDER BY ts DESC LIMIT 300").bind(now - 48 * HOUR),
-    env.DB.prepare("SELECT place, ts, entry, feel, first FROM visits WHERE ts > ? ORDER BY ts DESC LIMIT 30").bind(now - 7 * 24 * HOUR),
+    env.DB.prepare("SELECT place, kind, ts FROM reports WHERE ts > ? ORDER BY ts DESC LIMIT 300").bind(now - MAX_HOURS * HOUR),
+    env.DB.prepare(`SELECT place, ts, ${Object.keys(VISIT_Q).join(", ")} FROM visits WHERE ts > ? ORDER BY ts DESC LIMIT 30`).bind(now - 7 * 24 * HOUR),
   ]);
-  const by = new Map();
+  const byPlace = new Map();
   for (const r of reps.results) {
     if (now - r.ts > KINDS[r.kind] * HOUR) continue;
-    const k = r.place + "|" + r.kind;
-    const b = by.get(k) || { type: "report", place: r.place, kind: r.kind, n: 0, last: r.ts };
+    const by = byPlace.get(r.place) || {};
+    const b = (by[r.kind] ||= { type: "report", place: r.place, kind: r.kind, n: 0, last: r.ts });
     b.n++;
-    by.set(k, b);
+    byPlace.set(r.place, by);
   }
-  const items = [...by.values()].filter((b) => b.kind !== "closed" || b.n >= 2);
+  const items = [...byPlace.values()].flatMap(visibleReports);
   const seen = new Set();
   for (const v of vis.results) {
     if (seen.has(v.place)) continue; // newest visit per place
     seen.add(v.place);
-    items.push({ type: "visit", place: v.place, last: v.ts, entry: v.entry, feel: v.feel, first: v.first });
+    items.push({ type: "visit", ...v, last: v.ts, ts: undefined });
   }
   items.sort((a, b) => b.last - a.last);
   return json({ items: items.slice(0, 15) });
@@ -144,7 +157,7 @@ async function getVisits(url, env) {
 }
 
 async function postVisit(req, env, ctx) {
-  if (+(req.headers.get("content-length") || 0) > 300) return json({ error: "Request too large." }, 413);
+  if (+(req.headers.get("content-length") || 0) > 400) return json({ error: "Request too large." }, 413);
   let body;
   try { body = await req.json(); } catch { return json({ error: "Bad request." }, 400); }
   const { place } = body || {};
@@ -156,7 +169,7 @@ async function postVisit(req, env, ctx) {
     if (!allowed.includes(a)) return json({ error: "Bad request." }, 400);
     ans[q] = a;
   }
-  if (!ans.entry && !ans.feel && !ans.first) return json({ error: "Pick at least one answer." }, 400);
+  if (!Object.values(ans).some(Boolean)) return json({ error: "Pick at least one answer." }, 400);
   if (!(await knownPlace(place, req, env))) return json({ error: "Unknown place." }, 404);
 
   const now = Date.now();
@@ -171,8 +184,9 @@ async function postVisit(req, env, ctx) {
   if (plc >= VISIT_LIMITS.place24h) return json({ error: "This place has enough visits for today." }, 429);
   if (same > 0) return json({ error: "You already told us about this place today. Thanks." }, 429);
 
-  await env.DB.prepare("INSERT INTO visits (place, ts, who, entry, feel, first) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(place, now, who, ans.entry, ans.feel, ans.first).run();
+  const cols = Object.keys(VISIT_Q);
+  await env.DB.prepare(`INSERT INTO visits (place, ts, who, ${cols.join(", ")}) VALUES (?, ?, ?, ${cols.map(() => "?").join(", ")})`)
+    .bind(place, now, who, ...cols.map((q) => ans[q])).run();
 
   if (Math.random() < 0.05) {
     ctx.waitUntil(env.DB.batch([

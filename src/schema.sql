@@ -24,3 +24,7 @@ CREATE TABLE IF NOT EXISTS visits (
 CREATE INDEX IF NOT EXISTS visits_place_ts ON visits (place, ts);
 CREATE INDEX IF NOT EXISTS visits_who_ts ON visits (who, ts);
 CREATE INDEX IF NOT EXISTS visits_ts ON visits (ts);
+-- 2026-10-11: playground safety answers. Run once on the live database.
+ALTER TABLE visits ADD COLUMN equip TEXT;
+ALTER TABLE visits ADD COLUMN ground TEXT;
+ALTER TABLE visits ADD COLUMN toddler TEXT;

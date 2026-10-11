@@ -12,6 +12,7 @@
   --tabebuia-deep: #d9649a;
   --brick: #a8382a;
   --open: #1f7a3f;
+  --care: #8a5d00; /* "with care" and "some broken": the playground amber, dark enough for text */
   --wash: #f1f4f1;
   --focus: #1f5132;
   /* Category fills: rain tree, marigold, lake, jacaranda, teal */
@@ -39,6 +40,7 @@
     --tabebuia-deep: #f4a2c6;
     --brick: #f09482;
     --open: #6fd394;
+    --care: #f2c35e;
     --wash: #1b2a21;
     --focus: #f4a2c6;
     --c-all: #3a4a40;
@@ -406,3 +408,39 @@ footer p { margin: 0 0 6px; }
 @media (prefers-reduced-motion: reduce) { .me-dot { animation: none; } }
 .leaflet-tooltip.me-tip { background: #1a73e8; color: #ffffff; border: 0; font-weight: 700; font-size: .85rem; padding: 3px 9px; border-radius: 999px; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
 .leaflet-tooltip.me-tip::before { border-right-color: #1a73e8; }
+
+/* Under repair: a notice at the top of the card, so it shows even in the small strip. */
+.repair-note {
+  margin: 10px 0 0; padding: 8px 12px; border-radius: var(--radius-field);
+  border-left: 4px solid var(--brick); background: var(--wash); color: var(--brick); font-weight: 700; font-size: .92rem;
+}
+.rep.warn { color: var(--brick); }
+
+/* For little kids: three answers a parent needs at the gate. Color only carries the verdict. */
+.kid-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+.kid-tile {
+  position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  padding: 10px 10px 9px; border-radius: var(--radius-field); background: var(--wash); border-top: 4px solid var(--rule);
+}
+.kid-tile .kt-q { font-size: .8rem; color: var(--muted); }
+.kid-tile .kt-a { font-family: var(--display); font-size: 1.02rem; line-height: 1.15; overflow-wrap: anywhere; }
+.kid-tile .kt-n { font-size: .78rem; color: var(--muted); min-height: 1em; }
+.kid-tile.tone-good { border-top-color: var(--open); }
+.kid-tile.tone-good .kt-a { color: var(--open); }
+.kid-tile.tone-care { border-top-color: var(--care); }
+.kid-tile.tone-care .kt-a { color: var(--care); }
+.kid-tile.tone-bad { border-top-color: var(--brick); }
+.kid-tile.tone-bad .kt-a { color: var(--brick); }
+.kid-tile.tone-none .kt-a { color: var(--muted); font-family: var(--text); font-weight: 400; font-size: .9rem; }
+.kid-tile .swatch { position: absolute; top: 9px; right: 9px; width: 22px; height: 22px; }
+
+/* Ground swatches: the material itself, recognisable before the word is read. */
+.swatch { display: inline-block; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); }
+.sw-sand { background: radial-gradient(circle, #b08a4a 1px, transparent 1.6px) 0 0 / 5px 5px, radial-gradient(circle, #c9a464 1px, transparent 1.6px) 2px 3px / 6px 6px, #e6cf98; }
+.sw-grass { background: repeating-linear-gradient(100deg, #4f8f3a 0 2px, #6aab4c 2px 4px, #3f7a2e 4px 5px); }
+.sw-rubber { background: linear-gradient(#0000 calc(50% - 1px), rgba(0, 0, 0, .35) 0 calc(50% + 1px), #0000 0), linear-gradient(90deg, #0000 calc(50% - 1px), rgba(0, 0, 0, .35) 0 calc(50% + 1px), #0000 0), #b8533f; }
+.sw-hard { background: radial-gradient(circle at 30% 35%, #8a8f93 2px, transparent 2.6px), radial-gradient(circle at 68% 62%, #6d7276 2.5px, transparent 3px), radial-gradient(circle at 60% 25%, #9ea3a6 1.5px, transparent 2px), #b9bdbf; }
+.pick-ground { gap: 6px; }
+.pick-ground .swatch { width: 18px; height: 18px; }
+.visit-form .taps:has(.pick-ground) { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 360px) { .kid-grid { grid-template-columns: 1fr; } }

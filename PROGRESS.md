@@ -189,3 +189,12 @@ Next session:
 - The place card has three heights: peek (name, status and a Directions button), half and full. Drag the top part of the card, or tap the handle. On the map, a pin opens the card at half height with no dark backdrop, and the map pans so the pin stays visible. Tapping another pin swaps the card. In the list, the card opens at full height, and dragging it down closes it. On desktop, the list card stays a centered dialog.
 - Fixes: with location on, a search on the map stayed on you instead of moving to the result. With cluster animation on, a pin could stay hidden after a one-level zoom, so the animation is off. After the phone Back button closed a card, the next card closed with X kept its #id in the URL. That is now cleared.
 - Must be checked on a real phone: the drag feel on Android and iPhone.
+
+## Update 2026-10-11 (playgrounds for parents of toddlers)
+
+- A mother of a toddler on the r/bangalore post asked for three things: a way to say a playground is under maintenance, safety of the equipment and the ground for toddlers, and indoor playgrounds.
+- "Under repair" and "Repair done" taps on parks and playgrounds. "Under repair" lasts 14 days and shows only after two reports, as a brick-red notice at the top of the card (it shows in the small strip too). A newer "Repair done" clears it.
+- Playgrounds and parks with a play area (66 + 124) ask "Good for toddlers?", "How is the equipment?" and "What is the ground?" in "I went here", under the heading "For little kids". The card shows three tiles with the most common answer, colored good, care or bad. On a tie, it shows the more careful answer. Ground answers have material swatches (sand, grass, rubber mat, hard or rubble).
+- Database: `visits` has three new columns (equip, ground, toddler), added to the live database on 2026-10-11.
+- Indoor playgrounds are not added. Most are paid, and PUBLIK is about free places. Possible later with a "Paid" tag, if OpenStreetMap has enough of them (not checked).
+- Playgrounds are the weakest data (66 places, no timings). Improve them if parents become a core audience.
