@@ -198,3 +198,20 @@ Next session:
 - Database: `visits` has three new columns (equip, ground, toddler), added to the live database on 2026-10-11.
 - Indoor playgrounds are not added. Most are paid, and PUBLIK is about free places. Possible later with a "Paid" tag, if OpenStreetMap has enough of them (not checked).
 - Playgrounds are the weakest data (66 places, no timings). Improve them if parents become a core audience.
+
+## Update 2026-10-11 (traffic and session end)
+
+- People per day (distinct IPs, bots removed): about 165 on 10 Oct, the day after the Reddit post, and 97 on 11 Oct by 9:37 pm IST. The 11 Oct peak was 6 pm IST. The drop is normal after one Reddit post. Mobile networks share IP addresses, so these counts are a little low.
+- Last 24 hours at 9:37 pm IST: 184 place cards opened, 14 one-tap reports, 4 "I went here", 156 activity row loads. Visitors open about two cards each.
+- Live database, all time: 31 one-tap reports and 11 "I went here" answers. Nobody used the playground questions or "Under repair" yet. No new "I went here" answer came in on 11 Oct.
+- 404 requests stay at 150 to 300 a day. They are the same automated scans as before.
+- Arka asked what the backend is. He got this answer: a Cloudflare Worker and a D1 (SQLite) database, with no logins and places from OpenStreetMap. He wants to meet for coffee and keep contributing.
+- The scheduled traffic check (3 times a day) stops when this session closes. To run it again, use the command at the top of `scripts/traffic.py`.
+- Next: reply to the toddler mother on Reddit, then Arka's Instagram post, the Bengawalk message and apartment or parents' WhatsApp groups. Without a new push, traffic will keep falling.
+
+## Update 2026-10-12 (photo strip)
+
+- Arka said that the landing page needs images to catch attention, and that people should be able to post a photo with any text (a poem, an experience, a dirty spot).
+- Decision: photos on the landing page now, user photo posts later. Open uploads need a review step before posts appear, and with about 100 visitors a day a post wall stays empty. A future post must belong to one place and must hide faces and photo location data.
+- Done: a "Places to see" strip under the hero. It shows 18 well-known places with Wikimedia Commons photos, in a random order on each visit. Each photo shows the author and license. A tap opens the place card. The list of places is `PICS` in `docs/app.js`.
+- Left out on purpose: photos that do not match the place (Christ University Library shows a lake, Doddabommasandra shows a sewage plant, Iblur shows pollution).

@@ -820,6 +820,36 @@
     $("live").hidden = cards.length === 0;
   }
 
+  // Home page photo strip: well-known places with a good Wikimedia photo, in a new order on each visit.
+  const PICS = [
+    "osm-w22895320", "osm-w15802464", "osm-r1857615", "osm-w52032473", "osm-r9321012", "osm-w1265835948",
+    "osm-w36884560", "osm-r20742762", "osm-w38772822", "osm-w1270788423", "osm-w309936964", "osm-r6041559",
+    "osm-w1203175535", "osm-w460600474", "osm-r6030714", "osm-w62381586", "bbmp-866", "osm-w1284852011",
+  ];
+  function renderPics() {
+    const byId = new Map(state.places.map((p) => [p.id, p]));
+    const picks = PICS.map((id) => byId.get(id)).filter((p) => p && p.photo);
+    for (let i = picks.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [picks[i], picks[j]] = [picks[j], picks[i]];
+    }
+    const tiles = picks.map((p) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `pic c-${p.cat}`;
+      b.innerHTML = `<img alt="" loading="lazy" decoding="async"><span class="pic-txt"><span class="pic-cat"></span><b></b></span><span class="pic-by"></span>`;
+      b.querySelector("img").src = p.photo.src.replace("/960px-", "/500px-");
+      b.querySelector(".pic-cat").textContent = CAT_LABEL[p.cat];
+      b.querySelector("b").textContent = p.name;
+      b.querySelector(".pic-by").textContent = `${p.photo.author}, ${p.photo.license || ""}`;
+      b.setAttribute("aria-label", `${p.name}, ${CAT_LABEL[p.cat]}`);
+      b.addEventListener("click", () => { opener = b; open(p); });
+      return b;
+    });
+    $("pics-row").replaceChildren(...tiles);
+    $("pics").hidden = tiles.length === 0;
+  }
+
   // Surprise me: a random good place that is open now, near you if location is on.
   function surprise() {
     tick();
@@ -929,6 +959,7 @@
     let saved = "list";
     try { saved = localStorage.getItem("publik:view") || "list"; } catch {}
     if (saved === "map") setView("map"); else render();
+    renderPics();
     syncHash();
     loadActivity();
   }
