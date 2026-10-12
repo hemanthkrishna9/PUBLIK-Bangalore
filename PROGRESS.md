@@ -1,6 +1,6 @@
 # PUBLIK progress
 
-Last updated: 2026-10-09
+Last updated: 2026-10-12
 
 ## Status
 
@@ -224,3 +224,4 @@ Next session:
 - iNaturalist birds: research-grade bird photos (CC BY, CC BY-SA, CC0) within 600 m of each lake. 64 lakes and lake parks with 2 or more birds now show "Birds seen here" on the card. Hebbal has none, because its center is far from the shore.
 - Merge with `python scripts/build_data.py --photos` (no full rebuild). Caches are `raw/photos_openverse.json` and `raw/birds.json`.
 - Not done: Mapillary (needs a free token from a Mapillary login), the rest of the Openverse list (about 790 places, run with `open_photos.py openverse`), and a larger bird radius for big lakes.
+- Session closed 2026-10-12. Next: get a Mapillary token if wanted, finish the Openverse run, then push the site again (Reddit, Instagram, WhatsApp). User photo posts stay on hold until traffic grows.
