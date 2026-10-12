@@ -23,12 +23,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Baloo+Tamma+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css?v=19">
-<script>try { if (localStorage.getItem("publik_banner_photos_v1")) document.documentElement.dataset.promo = "off"; } catch (e) {}</script>
+<link rel="stylesheet" href="style.css?v=20">
+<script>try { if (localStorage.getItem("publik_banner_convo_v1")) document.documentElement.dataset.promo = "off"; } catch (e) {}</script>
 </head>
 <body>
 <div id="promo" class="promo" role="status">
-  <p>New: add your photos of parks, lakes and playgrounds. Open any place and tap Add photo. <a href="photo-rules.html">How it works</a></p>
+  <p>New: start a local conversation. Open any park, lake or playground and share a photo or a note on what is working and what can improve. <a href="photo-rules.html">How it works</a></p>
   <button id="promo-x" type="button" class="promo-x" aria-label="Close this notice">&times;</button>
 </div>
 <div class="hero">
@@ -101,6 +101,32 @@
     </div>
     <figure id="d-photo" class="photo" hidden><img alt="" loading="lazy"><figcaption></figcaption></figure>
     <p id="d-rating" class="muted"></p>
+    <section id="d-pics" hidden>
+      <h3>Start a local conversation</h3>
+      <p class="muted pics-help">What is working here? What can improve?</p>
+      <div id="d-pics-row" class="pics-row"></div>
+      <button id="d-addpic" type="button" class="btn went">Add photo or note</button>
+      <form id="d-pic-form" class="visit-form" hidden>
+        <p class="muted small">Photos and notes are public. Do not post close-up faces, children, names, phone numbers or number plates. They go live after an automatic check. <a href="photo-rules.html" target="_blank" rel="noopener">Photo rules</a></p>
+        <div class="pic-field">
+          <input id="d-pic-file" class="pic-file" type="file" accept="image/*">
+          <label for="d-pic-file" id="d-pic-btn" class="btn pic-btn">Take or choose a photo</label>
+          <div id="d-pic-preview" class="pic-preview" hidden>
+            <img alt="The photo you chose">
+            <button type="button" id="d-pic-remove" class="pic-remove" aria-label="Remove this photo">&times;</button>
+          </div>
+        </div>
+        <label class="pic-field">Your note, optional with a photo
+          <textarea id="d-pic-text" rows="3" maxlength="280" placeholder="What is working here? What can improve? (280 characters)"></textarea>
+        </label>
+        <div id="d-pic-ts"></div>
+        <div class="actions">
+          <button type="submit" class="btn primary">Post</button>
+          <button type="button" id="d-pic-cancel" class="btn">Cancel</button>
+        </div>
+      </form>
+      <p id="d-pic-msg" class="muted" role="status"></p>
+    </section>
     <section id="d-live" hidden>
       <h3>Right now</h3>
       <p id="d-live-list" class="reps"></p>
@@ -121,26 +147,6 @@
         <p class="muted small">Anonymous. Skip any question. We do not store IP addresses.</p>
       </form>
       <p id="d-visit-msg" class="muted" role="status"></p>
-    </section>
-    <section id="d-pics" hidden>
-      <h3>Photos from visitors</h3>
-      <div id="d-pics-row" class="pics-row"></div>
-      <button id="d-addpic" type="button" class="btn went">Add photo</button>
-      <form id="d-pic-form" class="visit-form" hidden>
-        <p class="muted small">Photos are public. Do not post close-up faces, children, or number plates. Photos go live after an automatic check. <a href="photo-rules.html" target="_blank" rel="noopener">Photo rules</a></p>
-        <label class="pic-field">Photo
-          <input id="d-pic-file" type="file" accept="image/*" required>
-        </label>
-        <label class="pic-field">Note, optional
-          <textarea id="d-pic-text" rows="2" maxlength="280" placeholder="What did you see? (280 characters)"></textarea>
-        </label>
-        <div id="d-pic-ts"></div>
-        <div class="actions">
-          <button type="submit" class="btn primary">Upload</button>
-          <button type="button" id="d-pic-cancel" class="btn">Cancel</button>
-        </div>
-      </form>
-      <p id="d-pic-msg" class="muted" role="status"></p>
     </section>
     <section>
       <h3>Timings</h3>
@@ -182,6 +188,6 @@
   <p>PUBLIK is an independent project. It is not linked to BBMP, BMRCL or Google. <a href="photo-rules.html">Photo rules</a></p>
   <p>Complaints about a photo: <a href="mailto:support@nxtduo.com">support@nxtduo.com</a>. We remove reported intimate or abusive photos within 24 hours.</p>
 </footer>
-<script src="app.js?v=19"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>

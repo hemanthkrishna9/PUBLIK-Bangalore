@@ -4,6 +4,7 @@
   python scripts/photos_admin.py list [pending|hidden|rejected|failed|live|deleted]
   python scripts/photos_admin.py view <id>       (saves the photo and opens it)
   python scripts/photos_admin.py restore <id>
+  python scripts/photos_admin.py hide <id>
   python scripts/photos_admin.py delete <id>
 
 Reads ADMIN_TOKEN from .env. Use --base http://127.0.0.1:8787 for a local `wrangler dev`.
@@ -66,7 +67,7 @@ def main(argv):
         print("saved", path)
         if hasattr(os, "startfile"):
             os.startfile(path)
-    elif cmd in ("restore", "delete") and len(argv) > 1:
+    elif cmd in ("restore", "delete", "hide") and len(argv) > 1:
         print(call("/api/admin/photo", {"id": argv[1], "action": cmd})[0].decode())
     else:
         print(__doc__)

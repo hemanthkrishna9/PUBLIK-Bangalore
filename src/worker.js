@@ -27,19 +27,20 @@ const VISIT_Q = {
 };
 const VISIT_LIMITS = { global24h: 1000, place24h: 20, days: 365 };
 
-let placeIds = null; // cached per isolate
+let places = null; // id -> { name, cat }, cached per isolate
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { "content-type": "application/json", "cache-control": "no-store" },
 });
 
-async function knownPlace(id, req, env) {
-  if (!placeIds) {
+async function placeOf(id, req, env) {
+  if (!places) {
     const res = await env.ASSETS.fetch(new URL("/data/places.json", req.url));
-    placeIds = new Set((await res.json()).places.map((p) => p.id));
+    places = new Map((await res.json()).places.map((p) => [p.id, { name: p.name, cat: p.cat }]));
   }
-  return placeIds.has(id);
+  return places.get(id) || null;
 }
+const knownPlace = async (id, req, env) => !!(await placeOf(id, req, env));
 
 async function dailySalt(env) {
   const day = new Date().toISOString().slice(0, 10);
@@ -241,7 +242,8 @@ const KV_STORE_MAX = 900 * 1024 * 1024;
 const KV_DELETES_PER_RUN = 30; // 24 hourly runs stay far below the 1,000 deletes a day
 const PHOTO_ID_RE = /^[a-f0-9]{16}$/;
 const TYPES = { jpg: "image/jpeg", webp: "image/webp" };
-const GENERIC_NO = "This photo cannot be posted. See the photo rules.";
+const NO_PHOTO = "This photo cannot be posted. Photos must show this public place, without close-up faces, children, ads or number plates.";
+const NO_NOTE = "This note cannot be posted. Please keep it about the place, without names, phone numbers, ads or abuse.";
 
 // Only the real site may post. Local pages count only when env.DEV is set (in .dev.vars).
 // lenient: the one-tap routes also accept a POST with neither header (some proxies strip both).
@@ -278,13 +280,63 @@ async function humanOk(req, env, token, action) {
   }
 }
 
-// Optional alert: if ALERT_WEBHOOK is set, send a short JSON message. It never blocks the reply.
-function alertOwner(ctx, env, info) {
-  if (!env.ALERT_WEBHOOK) return;
-  const text = `PUBLIK photo ${info.status}: ${info.id} at ${info.place}${info.reason ? " (" + info.reason + ")" : ""}`;
-  ctx.waitUntil(fetch(env.ALERT_WEBHOOK, {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, ...info }),
-  }).catch((e) => console.error("alert failed", String((e && e.message) || e).slice(0, 100))));
+// ---- Telegram: owner alerts with buttons ----
+// Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (the only chat we accept), TELEGRAM_WEBHOOK_SECRET.
+// Captions are plain text (no parse_mode) and under 1,024 characters. Errors are logged without the token.
+const tgOn = (env) => !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID);
+const tgScrub = (env, e) => String((e && e.message) || e).replaceAll(env.TELEGRAM_BOT_TOKEN || "\0", "***").slice(0, 100);
+
+async function tgCall(env, method, body) {
+  // TELEGRAM_API (a local test server) counts only when env.DEV is set.
+  const base = (env.DEV && env.TELEGRAM_API) || "https://api.telegram.org";
+  try {
+    const res = await fetch(`${base}/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
+      method: "POST", body, signal: AbortSignal.timeout(5000),
+      headers: typeof body === "string" ? { "content-type": "application/json" } : undefined,
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!j.ok) console.error("telegram", method, String(j.description || res.status).slice(0, 100));
+    return j;
+  } catch (e) {
+    console.error("telegram", method, tgScrub(env, e));
+    return {};
+  }
+}
+
+// Buttons by status: a live photo can be deleted or hidden; a hidden or waiting one can be restored or deleted.
+function tgKeys(id, status) {
+  const b = (text, act) => ({ text, callback_data: `${act}:${id}` });
+  if (status === "deleted") return { inline_keyboard: [] };
+  return { inline_keyboard: [status === "live" ? [b("Delete", "del"), b("Hide", "hide")] : [b("Restore", "res"), b("Delete", "del")]] };
+}
+
+// kind: live, hidden or pending. getThumb: async function that gives the thumbnail bytes, or null for a note.
+function alertTg(ctx, env, kind, p, getThumb) {
+  if (!tgOn(env)) return;
+  const head = { live: p.noImage ? "NEW NOTE (live)" : "NEW PHOTO (live)", hidden: "HIDDEN after reports", pending: "WAITING: the check failed" }[kind];
+  const caption = [head, `${p.placeName || "?"} (${p.place})`, p.text ? `Note: ${p.text.slice(0, 300)}` : "", `Status: ${kind}`, `Check: ${p.reason || "-"}`, `Id: ${p.id.slice(0, 8)}`]
+    .filter(Boolean).join("\n").slice(0, 1000);
+  const reply_markup = tgKeys(p.id, kind);
+  ctx.waitUntil((async () => {
+    const thumb = p.noImage ? null : await getThumb().catch(() => null);
+    if (!thumb) { await tgCall(env, "sendMessage", JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: caption, reply_markup })); return; }
+    const form = (field) => {
+      const f = new FormData();
+      f.set("chat_id", String(env.TELEGRAM_CHAT_ID));
+      f.set("caption", caption);
+      f.set("reply_markup", JSON.stringify(reply_markup));
+      if (field === "photo" && kind !== "live") f.set("has_spoiler", "true"); // hidden and waiting photos stay blurred until tapped
+      f.set(field, new Blob([thumb], { type: TYPES[p.ext] || "image/webp" }), `thumb.${p.ext || "webp"}`);
+      return f;
+    };
+    // If Telegram does not take the image as a photo, a live photo goes as a file.
+    // A hidden or waiting photo never goes unblurred: send the text and buttons only.
+    const sent = await tgCall(env, "sendPhoto", form("photo"));
+    if (!sent.ok) {
+      if (kind === "live") await tgCall(env, "sendDocument", form("document"));
+      else await tgCall(env, "sendMessage", JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: caption, reply_markup }));
+    }
+  })());
 }
 
 // File type and pixel size from the header bytes, not from what the browser says.
@@ -338,11 +390,16 @@ async function postPhoto(req, env, ctx) {
   if (typeof text !== "string") return json({ error: "Bad request." }, 400);
   text = text.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
   if ([...text].length > PHOTO.text) return json({ error: `Keep the note to ${PHOTO.text} characters.` }, 400);
-  if (!(await knownPlace(place, req, env))) return json({ error: "Unknown place." }, 404);
+  const placeInfo = await placeOf(place, req, env);
+  if (!placeInfo) return json({ error: "Unknown place." }, 404);
+
+  // A note needs no photo: with no "full" file it is a text-only post, checked by the same Claude call.
+  const textOnly = !isFile(form.get("full")) && !isFile(form.get("thumb"));
+  if (textOnly && [...text].length < 3) return json({ error: "Add a photo, or write a short note." }, 400);
 
   // Size first, then the real type and pixel size from the bytes.
   const files = {};
-  for (const name of ["full", "thumb"]) {
+  for (const name of textOnly ? [] : ["full", "thumb"]) {
     const f = form.get(name);
     if (!isFile(f) || !f.size) return json({ error: "Bad request." }, 400);
     if (f.size > PHOTO[name]) return json({ error: "Photo is too large." }, 413);
@@ -354,14 +411,14 @@ async function postPhoto(req, env, ctx) {
     if (!(info.w > 0 && info.h > 0) || Math.max(info.w, info.h) > side) return json({ error: `The ${name} image is too big in pixels (at most ${side}).` }, 413);
     files[name] = { bytes, ext: info.ext };
   }
-  if (files.full.ext !== files.thumb.ext) return json({ error: "Bad request." }, 400);
+  if (!textOnly && files.full.ext !== files.thumb.ext) return json({ error: "Bad request." }, 400);
   if (!(await humanOk(req, env, form.get("cf-turnstile-response"), "upload"))) return json({ error: "Could not verify that you are a person. Reload the page and try again." }, 403);
 
   const now = Date.now();
   const { who, prev } = await visitorKeys(req, env);
   // Limits and insert in ONE statement, so parallel uploads cannot pass together. The row goes in before the check.
   const id = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
-  const ext = files.full.ext;
+  const ext = textOnly ? "none" : files.full.ext; // "none" marks a note with no stored images
   const day = now - 24 * HOUR;
   const ins = await env.DB.prepare(
     `INSERT INTO photos (id, place, who, device, text, ext, bytes, status, reason, ts)
@@ -371,7 +428,7 @@ async function postPhoto(req, env, ctx) {
        AND (SELECT COUNT(*) FROM photos WHERE who IN (?, ?) AND ts > ?) < ?
        AND (SELECT COUNT(*) FROM photos WHERE place = ? AND ts > ?) < ?
        AND (SELECT COALESCE(SUM(bytes), 0) FROM photos WHERE ext <> '' AND status IN ('live', 'hidden', 'pending')) < ?`,
-  ).bind(id, place, who, device, text || null, ext, files.full.bytes.length + files.thumb.bytes.length, now,
+  ).bind(id, place, who, device, text || null, ext, textOnly ? 0 : files.full.bytes.length + files.thumb.bytes.length, now,
     day, PHOTO.checks24h, device, day, PHOTO.device24h, who, prev || "-", day, PHOTO.who24h, place, day, PHOTO.place24h, KV_STORE_MAX).run();
   if (!ins.meta.changes) {
     // Only to pick the message: the refusal itself was decided inside the statement.
@@ -387,6 +444,7 @@ async function postPhoto(req, env, ctx) {
   const setStatus = (status, reason) => env.DB.prepare("UPDATE photos SET status = ?, reason = ? WHERE id = ?").bind(status, reason, id).run();
   // If one write fails, remove the other, so no half photo stays in KV.
   const store = async () => {
+    if (textOnly) return; // nothing to write
     const put = (size) => env.PHOTOS.put(photoKey(id, size, ext), files[size].bytes);
     const done = await Promise.allSettled([put("full"), put("thumb")]);
     if (done.some((d) => d.status === "rejected")) {
@@ -400,7 +458,7 @@ async function postPhoto(req, env, ctx) {
   // Claude sees the very images that would go live: full and thumb.
   let verdict = null;
   try {
-    verdict = await checkPhoto(env, files.full.bytes, files.thumb.bytes, TYPES[ext], text);
+    verdict = await checkPhoto(env, textOnly ? null : files.full.bytes, textOnly ? null : files.thumb.bytes, TYPES[ext], text, placeInfo);
   } catch (e) {
     console.error("photo check failed", String((e && e.message) || e).slice(0, 200));
   }
@@ -409,16 +467,17 @@ async function postPhoto(req, env, ctx) {
       // Fail closed: keep the images, hide the photo, and let the owner look.
       await store();
       await setStatus("pending", "check failed");
-      alertOwner(ctx, env, { id, place, status: "pending", reason: "check failed" });
+      alertTg(ctx, env, "pending", { id, place, placeName: placeInfo.name, text, reason: "check failed", noImage: textOnly, ext }, async () => files.thumb.bytes);
       return json({ status: "pending" });
     }
     if (!verdict.allow) {
       // The detail stays in D1. The visitor gets a generic message.
       await setStatus("rejected", [verdict.reason, ...verdict.categories].filter(Boolean).join(" | "));
-      return json({ status: "rejected", reason: GENERIC_NO });
+      return json({ status: "rejected", reason: textOnly ? NO_NOTE : NO_PHOTO });
     }
     await store();
     await setStatus("live", verdict.reason || "ok");
+    alertTg(ctx, env, "live", { id, place, placeName: placeInfo.name, text, reason: verdict.reason || "ok", noImage: textOnly, ext }, async () => files.thumb.bytes);
   } catch (e) {
     console.error("photo store failed", String((e && e.message) || e).slice(0, 100));
     await setStatus("failed", "storage error").catch(() => {});
@@ -431,7 +490,7 @@ async function getPhotos(url, env) {
   const place = url.searchParams.get("place") || "";
   if (!ID_RE.test(place)) return json({ error: "Bad place id." }, 400);
   const { results } = await env.DB.prepare(
-    "SELECT id, text, ts FROM photos WHERE place = ? AND status = 'live' ORDER BY ts DESC LIMIT ?",
+    "SELECT id, text, ts, ext <> 'none' AS img FROM photos WHERE place = ? AND status = 'live' ORDER BY ts DESC LIMIT ?",
   ).bind(place, PHOTO.perPlace).all();
   return json({ photos: results });
 }
@@ -440,7 +499,7 @@ async function getPhotos(url, env) {
 // Browsers keep an image for 5 minutes, so a hidden photo can stay that long on a phone that already loaded it.
 async function getImg(m, env) {
   const row = await env.DB.prepare("SELECT ext FROM photos WHERE id = ? AND status = 'live'").bind(m[1]).first();
-  const body = row && await env.PHOTOS.get(photoKey(m[1], m[2], row.ext), { type: "stream" });
+  const body = row && row.ext !== "none" && await env.PHOTOS.get(photoKey(m[1], m[2], row.ext), { type: "stream" });
   if (!body) return new Response("Not found.", { status: 404, headers: { "cache-control": "no-store" } });
   return new Response(body, { headers: { "content-type": TYPES[row.ext], "cache-control": "private, max-age=300", "x-content-type-options": "nosniff" } });
 }
@@ -455,7 +514,7 @@ async function postPhotoReport(req, env, ctx) {
   const id = body && body.id;
   if (typeof id !== "string" || !PHOTO_ID_RE.test(id)) return json({ error: "Bad request." }, 400);
   if (!(await humanOk(req, env, body.ts, "report"))) return json({ error: "Could not verify that you are a person. Reload the page and try again." }, 403);
-  const photo = await env.DB.prepare("SELECT place FROM photos WHERE id = ? AND status = 'live'").bind(id).first();
+  const photo = await env.DB.prepare("SELECT place, ext, text FROM photos WHERE id = ? AND status = 'live'").bind(id).first();
   if (!photo) return json({ error: "This photo is no longer shown." }, 404);
 
   const now = Date.now();
@@ -472,26 +531,95 @@ async function postPhotoReport(req, env, ctx) {
   const row = await env.DB.prepare(
     "UPDATE photos SET reports = reports + 1, status = CASE WHEN status = 'live' AND reports + 1 >= ? THEN 'hidden' ELSE status END WHERE id = ? RETURNING status, reports",
   ).bind(PHOTO.hideAt, id).first();
-  if (row && row.status === "hidden") alertOwner(ctx, env, { id, place: photo.place, status: "hidden", reason: `${row.reports} reports` });
+  if (row && row.status === "hidden" && tgOn(env)) {
+    const info = await placeOf(photo.place, req, env);
+    const noImage = photo.ext === "none";
+    alertTg(ctx, env, "hidden", { id, place: photo.place, placeName: info && info.name, text: photo.text, reason: `${row.reports} reports`, noImage, ext: photo.ext },
+      async () => { const b = await env.PHOTOS.get(photoKey(id, "thumb", photo.ext), { type: "arrayBuffer" }); return b && new Uint8Array(b); });
+  }
   return json({ ok: true });
+}
+
+// Constant-time string compare: hash both, then compare the hashes.
+async function safeEq(x, y) {
+  const enc = new TextEncoder();
+  const [a, b] = (await Promise.all([x, y].map((v) => crypto.subtle.digest("SHA-256", enc.encode(v))))).map((v) => new Uint8Array(v));
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
 }
 
 // Owner endpoints: header "authorization: Bearer <ADMIN_TOKEN>".
 async function isAdmin(req, env) {
   const m = /^Bearer (.{1,200})$/.exec(req.headers.get("authorization") || "");
-  if (!m || !env.ADMIN_TOKEN) return false;
-  const enc = new TextEncoder();
-  const [a, b] = (await Promise.all([m[1], env.ADMIN_TOKEN].map((s) => crypto.subtle.digest("SHA-256", enc.encode(s))))).map((x) => new Uint8Array(x));
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]; // constant time
-  return diff === 0;
+  return !!m && !!env.ADMIN_TOKEN && safeEq(m[1], env.ADMIN_TOKEN);
+}
+
+// delete, hide or restore one photo. Used by the admin endpoint and the Telegram buttons.
+// Returns { status } or { error, code }. A note ("none" ext) has no keys in KV.
+async function photoAction(env, id, action) {
+  const row = await env.DB.prepare("SELECT ext, status FROM photos WHERE id = ?").bind(id).first();
+  if (!row) return { error: "No such photo.", code: 404 };
+  const hasImg = !!row.ext && row.ext !== "none";
+  if (action === "delete") {
+    // If the KV call fails, the row stays "deleted" with its ext, and the hourly job tries again.
+    let ext = row.ext;
+    if (hasImg) {
+      try { await Promise.all([env.PHOTOS.delete(photoKey(id, "full", ext)), env.PHOTOS.delete(photoKey(id, "thumb", ext))]); ext = ""; } catch (e) { console.error("kv delete failed", id); }
+    } else ext = "";
+    await env.DB.prepare("UPDATE photos SET status = 'deleted', text = NULL, ext = ? WHERE id = ?").bind(ext, id).run();
+    return { status: "deleted" };
+  }
+  if (action === "hide") {
+    if (row.status !== "live") return { error: "Only a live photo can be hidden.", code: 409 };
+    await env.DB.prepare("UPDATE photos SET status = 'hidden' WHERE id = ?").bind(id).run();
+    return { status: "hidden" };
+  }
+  // restore: only hidden and pending ones, and only if the images are still stored.
+  if (!["hidden", "pending"].includes(row.status) || !row.ext || (hasImg && !(await kvHas(env, photoKey(id, "full", row.ext))))) {
+    return { error: "This photo has no stored image to restore.", code: 409 };
+  }
+  await env.DB.batch([
+    env.DB.prepare("UPDATE photos SET status = 'live', reports = 0 WHERE id = ?").bind(id),
+    env.DB.prepare("DELETE FROM photo_reports WHERE photo = ?").bind(id), // so new reports count from zero
+  ]);
+  return { status: "live" };
+}
+
+// Telegram webhook. Only Telegram (the secret header) and only the owner's chat are accepted.
+async function postTelegram(req, env, ctx) {
+  const secret = req.headers.get("x-telegram-bot-api-secret-token") || "";
+  if (!env.TELEGRAM_WEBHOOK_SECRET || !(await safeEq(secret, env.TELEGRAM_WEBHOOK_SECRET))) return json({ error: "Not allowed." }, 401);
+  if (+(req.headers.get("content-length") || 0) > 20000) return json({ ok: true });
+  let u;
+  try { u = await req.json(); } catch { return json({ ok: true }); }
+  const cb = u && u.callback_query;
+  const chat = String(env.TELEGRAM_CHAT_ID || "");
+  const msg = cb && cb.message;
+  if (!cb || !chat || String(cb.from && cb.from.id) !== chat || String(msg && msg.chat && msg.chat.id) !== chat) return json({ ok: true });
+  const m = /^(del|hide|res):([a-f0-9]{16})$/.exec(String(cb.data || ""));
+  if (!m) return json({ ok: true });
+  const r = await photoAction(env, m[2], { del: "delete", hide: "hide", res: "restore" }[m[1]]);
+  const said = r.error || { deleted: "Deleted by owner", hidden: "Hidden by owner", live: "Restored by owner" }[r.status];
+  const calls = [tgCall(env, "answerCallbackQuery", JSON.stringify({ callback_query_id: String(cb.id), text: said }))];
+  if (!r.error && msg && msg.message_id && r.status === "deleted") {
+    // A deleted photo leaves no copy in the chat either.
+    calls.push(tgCall(env, "deleteMessage", JSON.stringify({ chat_id: chat, message_id: msg.message_id })));
+  } else if (!r.error && msg && msg.message_id) {
+    const old = String(msg.caption || msg.text || "");
+    const edit = { chat_id: chat, message_id: msg.message_id, reply_markup: tgKeys(m[2], r.status) };
+    if (msg.caption !== undefined) calls.push(tgCall(env, "editMessageCaption", JSON.stringify({ ...edit, caption: `${old}\n\n${said}`.slice(0, 1000) })));
+    else calls.push(tgCall(env, "editMessageText", JSON.stringify({ ...edit, text: `${old}\n\n${said}`.slice(0, 4000) })));
+  }
+  ctx.waitUntil(Promise.all(calls));
+  return json({ ok: true });
 }
 
 async function adminPhotos(req, url, env) {
   const m = /^\/api\/admin\/img\/([a-f0-9]{16})\/(full|thumb)$/.exec(url.pathname);
   if (m && req.method === "GET") {
     const row = await env.DB.prepare("SELECT ext FROM photos WHERE id = ?").bind(m[1]).first();
-    const body = row && row.ext && await env.PHOTOS.get(photoKey(m[1], m[2], row.ext), { type: "stream" });
+    const body = row && row.ext && row.ext !== "none" && await env.PHOTOS.get(photoKey(m[1], m[2], row.ext), { type: "stream" });
     if (!body) return json({ error: "No image." }, 404);
     return new Response(body, { headers: { "content-type": TYPES[row.ext], "cache-control": "private, no-store" } });
   }
@@ -512,29 +640,13 @@ async function adminPhotos(req, url, env) {
     let body;
     try { body = await req.json(); } catch { return json({ error: "Bad request." }, 400); }
     const { id, action } = body || {};
-    if (typeof id !== "string" || !PHOTO_ID_RE.test(id) || !["restore", "delete"].includes(action)) return json({ error: "Bad request." }, 400);
-    const row = await env.DB.prepare("SELECT ext, status FROM photos WHERE id = ?").bind(id).first();
-    if (!row) return json({ error: "No such photo." }, 404);
-    if (action === "delete") {
-      // If the KV call fails, the row stays "deleted" with its ext, and the hourly job tries again.
-      let ext = row.ext;
-      if (ext) {
-        try { await Promise.all([env.PHOTOS.delete(photoKey(id, "full", ext)), env.PHOTOS.delete(photoKey(id, "thumb", ext))]); ext = ""; } catch (e) { console.error("kv delete failed", id); }
-      }
-      await env.DB.prepare("UPDATE photos SET status = 'deleted', text = NULL, ext = ? WHERE id = ?").bind(ext, id).run();
-      return json({ ok: true, status: "deleted" });
-    }
-    // Only photos with stored images can go live: hidden and pending ones.
-    if (!["hidden", "pending"].includes(row.status) || !row.ext || !(await kvHas(env, photoKey(id, "full", row.ext)))) return json({ error: "This photo has no stored image to restore." }, 409);
-    await env.DB.batch([
-      env.DB.prepare("UPDATE photos SET status = 'live', reports = 0 WHERE id = ?").bind(id),
-      env.DB.prepare("DELETE FROM photo_reports WHERE photo = ?").bind(id), // so new reports count from zero
-    ]);
-    return json({ ok: true, status: "live" });
+    if (typeof id !== "string" || !PHOTO_ID_RE.test(id) || !["restore", "delete", "hide"].includes(action)) return json({ error: "Bad request." }, 400);
+    const r = await photoAction(env, id, action);
+    if (r.error) return json({ error: r.error }, r.code);
+    return json({ ok: true, status: r.status });
   }
   return json({ error: "Not found." }, 404);
 }
-
 // Hourly job (cron trigger in wrangler.jsonc): forget visitor keys, drop old rows, finish deletes.
 // No KV list calls (1,000 a day on the free plan): keys are rebuilt from the row id and ext.
 // At most KV_DELETES_PER_RUN KV deletes per run, so the daily delete limit cannot be passed.
@@ -553,7 +665,7 @@ async function cleanup(env) {
     budget -= 2;
   };
   // Deleted photos whose keys are still there (the admin delete failed): finish them first.
-  const pending = await env.DB.prepare("SELECT id, ext FROM photos WHERE status = 'deleted' AND ext <> '' LIMIT ?").bind(budget / 2).all();
+  const pending = await env.DB.prepare("SELECT id, ext FROM photos WHERE status = 'deleted' AND ext NOT IN ('', 'none') LIMIT ?").bind(budget / 2).all();
   for (const r of pending.results) await dropKeys(r);
   // Rows that go after 30 days. Only a 'failed' row with an ext may still have keys (a half write that could not be undone).
   const old = await env.DB.prepare(
@@ -561,7 +673,7 @@ async function cleanup(env) {
   ).bind(now - 30 * 24 * HOUR).all();
   let rows = 0;
   for (const r of old.results) {
-    if (r.status === "failed" && r.ext) {
+    if (r.status === "failed" && r.ext && r.ext !== "none") {
       if (budget < 2) continue;
       await dropKeys(r);
     }
@@ -593,6 +705,8 @@ export default {
       if (url.pathname === "/api/photo-report" && req.method === "POST") return await postPhotoReport(req, env, ctx);
       const img = /^\/api\/img\/([a-f0-9]{16})\/(full|thumb)$/.exec(url.pathname);
       if (img && req.method === "GET") return await getImg(img, env);
+      // The Telegram webhook is exempt from the Origin rule: it is protected by its secret header and the owner's chat id.
+      if (url.pathname === "/api/tg" && req.method === "POST") return await postTelegram(req, env, ctx);
       if (url.pathname.startsWith("/api/admin/")) {
         if (!(await isAdmin(req, env))) return json({ error: "Not allowed." }, 401);
         return await adminPhotos(req, url, env);

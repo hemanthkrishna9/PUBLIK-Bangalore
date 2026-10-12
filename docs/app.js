@@ -1,7 +1,7 @@
 (() => {
   const REPO = "https://github.com/hemanthkrishna9/PUBLIK-Bangalore";
   const PAGE = 50;
-  const PHOTO_BANNER = true; // false hides the "add photos" notice at the top of the home page
+  const PHOTO_BANNER = true; // false hides the "local conversation" notice at the top of the home page
   const CATS = [
     ["all", "All"], ["park", "Parks"], ["playground", "Playgrounds"],
     ["lake", "Lakes"], ["library", "Libraries"], ["toilet", "Toilets"],
@@ -777,7 +777,7 @@
   if (promo) {
     $("promo-x").addEventListener("click", () => {
       promo.hidden = true;
-      try { localStorage.setItem("publik_banner_photos_v1", "1"); } catch {}
+      try { localStorage.setItem("publik_banner_convo_v1", "1"); } catch {}
     });
   }
 
@@ -925,11 +925,18 @@
 
   function showPics(rows) {
     const box = $("d-pics-row");
-    if (!rows.length) { box.textContent = "No visitor photos yet. Add the first one."; box.className = "muted"; return; }
+    if (!rows.length) { box.textContent = "Nothing here yet. Start the conversation with a photo or a note."; box.className = "muted"; return; }
     box.className = "pics-row";
     box.replaceChildren(...rows.map((r) => {
       const b = document.createElement("button");
       b.type = "button";
+      b.addEventListener("click", () => openPic(r, b));
+      if (!r.img) { // a note with no photo
+        b.className = "pic-note";
+        b.setAttribute("aria-label", "Open visitor note");
+        b.textContent = r.text || "Note";
+        return b;
+      }
       b.className = "pic-thumb";
       b.setAttribute("aria-label", "Open visitor photo");
       const img = document.createElement("img");
@@ -937,7 +944,6 @@
       img.alt = "";
       img.loading = "lazy";
       b.append(img);
-      b.addEventListener("click", () => openPic(r, b));
       return b;
     }));
   }
@@ -966,12 +972,15 @@
   function openPic(r, opener) {
     picOpen = r.id;
     picOpener = opener;
-    $("pv-img").src = `/api/img/${r.id}/full`;
+    $("pv-img").hidden = !r.img;
+    if (r.img) $("pv-img").src = `/api/img/${r.id}/full`;
+    else $("pv-img").removeAttribute("src");
     $("pv-text").textContent = r.text ? `${r.text} (${ago(r.ts)})` : `Added ${ago(r.ts)}`;
+    $("pic-view").setAttribute("aria-label", r.img ? "Visitor photo" : "Visitor note");
     let done = false;
     try { done = !!localStorage.getItem(picRepKey(r.id)); } catch {}
     $("pv-report").disabled = done;
-    $("pv-report").textContent = done ? "Reported" : "Report this photo";
+    $("pv-report").textContent = done ? "Reported" : r.img ? "Report this photo" : "Report this note";
     $("pv-msg").textContent = "";
     $("pic-view").hidden = false;
     $("pv-close").focus();
@@ -1005,13 +1014,38 @@
     }
   });
 
+  // The chosen photo shows as a small preview, with a way to remove it before posting.
+  let previewUrl = null;
+  function clearPreview() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+    $("d-pic-file").value = "";
+    $("d-pic-preview").hidden = true;
+    $("d-pic-btn").hidden = false;
+    $("d-pic-preview").querySelector("img").removeAttribute("src");
+  }
+  $("d-pic-file").addEventListener("change", () => {
+    const f = $("d-pic-file").files[0];
+    if (!f) { clearPreview(); return; }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(f);
+    const img = $("d-pic-preview").querySelector("img");
+    img.onerror = () => { $("d-pic-preview").hidden = true; }; // for example HEIC on Chrome: the file is kept, only the preview is missing
+    img.src = previewUrl;
+    $("d-pic-preview").hidden = false;
+    $("d-pic-btn").hidden = true;
+  });
+  $("d-pic-remove").addEventListener("click", () => { clearPreview(); $("d-pic-btn").focus(); });
+  $("d-pic-btn").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("d-pic-file").click(); } });
+
   $("d-addpic").addEventListener("click", () => {
     $("d-addpic").hidden = true;
     $("d-pic-msg").textContent = "";
     $("d-pic-form").hidden = false;
-    $("d-pic-file").focus();
+    $("d-pic-btn").focus();
   });
   $("d-pic-cancel").addEventListener("click", () => {
+    clearPreview();
     $("d-pic-form").hidden = true;
     $("d-addpic").hidden = false;
     $("d-addpic").focus();
@@ -1021,26 +1055,30 @@
     const id = picsFor;
     const msg = $("d-pic-msg");
     const file = $("d-pic-file").files[0];
-    if (!file) { msg.textContent = "Pick a photo first."; return; }
+    const noteText = $("d-pic-text").value.trim();
+    if (!file && [...noteText].length < 3) { msg.textContent = "Choose a photo, or write a short note."; return; }
     const send = $("d-pic-form").querySelector("button[type=submit]");
     send.disabled = true;
     const note = (t) => { if (picsFor === id) msg.textContent = t; };
     try {
-      note("Shrinking your photo...");
-      const img = await decodeImage(file);
-      if (!img) throw new Error("Your browser cannot read this photo format. Try a JPEG or PNG photo, or take a new picture.");
-      const blobs = {};
-      for (const k of ["full", "thumb"]) {
-        blobs[k] = await shrink(img, PIC_SIDE[k], PIC_MAX[k]);
-        if (!blobs[k]) throw new Error("This photo is too detailed to shrink. Try another one.");
-      }
-      if (img.close) img.close();
-      const ext = blobs.full.type === "image/webp" ? "webp" : "jpg";
       const form = new FormData();
       form.append("place", id);
       form.append("device", deviceId());
-      form.append("text", $("d-pic-text").value.trim());
-      for (const k of ["full", "thumb"]) form.append(k, blobs[k], `${k}.${ext}`);
+      form.append("text", noteText);
+      let ext = "";
+      if (file) {
+        note("Shrinking your photo...");
+        const img = await decodeImage(file);
+        if (!img) throw new Error("Your browser cannot read this photo format. Try a JPEG or PNG photo, or take a new picture.");
+        const blobs = {};
+        for (const k of ["full", "thumb"]) {
+          blobs[k] = await shrink(img, PIC_SIDE[k], PIC_MAX[k]);
+          if (!blobs[k]) throw new Error("This photo is too detailed to shrink. Try another one.");
+        }
+        if (img.close) img.close();
+        ext = blobs.full.type === "image/webp" ? "webp" : "jpg";
+        for (const k of ["full", "thumb"]) form.append(k, blobs[k], `${k}.${ext}`);
+      }
       note("Checking that you are a person...");
       form.append("cf-turnstile-response", await turnstileToken($("d-pic-ts"), "upload"));
       note("Uploading and checking. This takes a few seconds...");
@@ -1048,17 +1086,18 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not send. Try again later.");
       if (data.status === "rejected") {
-        note(`Not allowed: ${data.reason || "this photo does not follow the photo rules."}`);
+        note(data.reason || (file ? "This photo cannot be posted." : "This note cannot be posted."));
       } else {
         $("d-pic-form").reset();
+        clearPreview();
         $("d-pic-form").hidden = true;
         $("d-addpic").hidden = false;
         if (data.status === "live") {
           const p = state.places.find((x) => x.id === id);
           if (p && picsFor === id) await loadPics(p);
-          note("Live. Thanks, everyone can see your photo now.");
+          note(file ? "Live. Thanks, everyone can see your photo now." : "Live. Thanks, everyone can see your note now.");
         } else {
-          note("Waiting for a check. Your photo will show after the owner looks at it.");
+          note(`Waiting for a check. Your ${file ? "photo" : "note"} will show after the owner looks at it.`);
         }
       }
     } catch (err) {

@@ -522,3 +522,73 @@ Arka's feedback on the photo launch (WhatsApp, 00:35): move "Add photo" up and f
 8. Later, with more traffic: gamification. Anonymous device ids are easy to cheat, and the board would stay empty at 50 to 100 visitors a day.
 9. Later: move photos from KV to R2 when storage nears 800 MB (needs a card on Cloudflare). Watch for "exceeded CPU" errors: uploads use 44 to 110 ms of CPU against the free plan's 10 ms limit, but Cloudflare accepted all of them so far.
 10. Growth stays the main job: post the photo feature on Arka's Instagram, the r/bangalore thread, Bengawalk and WhatsApp groups.
+
+## Update 2026-10-13 (Telegram alerts and conversation)
+
+Built on top of the live version (commit 2138861). Not deployed, committed or pushed. No remote Cloudflare change. Real Claude calls this round: 4 (limit 8). One real Telegram `sendMessage` to the owner's chat ("PUBLIK bot test from local build") worked (ok: true). No `setWebhook` call was made.
+
+### A. Telegram moderation bot (replaces ALERT_WEBHOOK, which is removed)
+- Secrets: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (the only chat accepted), `TELEGRAM_WEBHOOK_SECRET`. If the token or chat id is missing, alerts are off.
+- Every photo or note that goes live: `sendPhoto` with the thumbnail bytes (multipart upload from the Worker, not a URL). A note has no image, so it goes as `sendMessage`. Caption: place name, place id, the note (first 300 characters), status, check reason, short id. Buttons: Delete and Hide.
+- A hidden photo (2 reports) and a pending photo (check failed): `sendPhoto` with `has_spoiler: true`, caption with status and reason, buttons Restore and Delete. For a hidden photo the thumbnail is read from KV.
+- All calls run in `ctx.waitUntil` with a 5 second timeout. Errors log only a sliced message with the token replaced. Captions are plain text (no `parse_mode`), at most 1,000 characters. If Telegram refuses the image as a photo (for example a WebP format problem), the Worker sends it as a file with `sendDocument` so the alert still arrives (that copy is not blurred).
+- `POST /api/tg`: exempt from the Origin rule. It needs the `X-Telegram-Bot-Api-Secret-Token` header to equal `TELEGRAM_WEBHOOK_SECRET` (constant time, 401 otherwise), and `callback_query.from.id` and `message.chat.id` both equal `TELEGRAM_CHAT_ID`. Anything else gets 200 and is ignored. Data `del:<id>`, `hide:<id>`, `res:<id>` call the same `photoAction()` as the admin endpoint (which now also has `hide`). The Worker answers the callback and edits the caption (or text) to "Deleted by owner", "Hidden by owner" or "Restored by owner", with the right new buttons.
+- `scripts/telegram_setup.py` (not run): reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` from `.env`, calls `setWebhook` for `https://publik.nxtduo.com/api/tg` with `secret_token`, `allowed_updates` `["callback_query","message"]`, `drop_pending_updates` true, uses `truststore` if installed, and prints only `ok` and `description`.
+- `photos_admin.py` also has `hide <id>`.
+
+### B. Conversation items
+1. The "Start a local conversation" section moved above "Right now" on the place card (it was below "I went here"). Heading "Start a local conversation", helper "What is working here? What can improve?", button "Add photo or note". A note needs no photo: a post with no image files is a text-only post, checked by the same Claude call (text only), stored with `ext = "none"`, no KV writes, same limits (it counts in the daily, device, network and place counts; it adds 0 bytes to the storage guard). It shows in the same list as a small text card with no thumbnail. The viewer shows the note without an image. The cron, the admin delete and restore, and the serving route all treat `none` as "no keys". Migration: none needed (ext is NOT NULL, and the sentinel `none` fits), so there are no new `--command` statements.
+2. The place name and kind (park, playground, lake, library, public toilet) go to the Claude check. Clear mismatches (inside of a temple, a shop, a house or a vehicle on a park card) are rejected with `place_mismatch`. Unclear cases pass.
+3. Messages: photo "This photo cannot be posted. Photos must show a public place, without close-up faces, children, ads or number plates."; note "This note cannot be posted. Please keep it about the place, without names, phone numbers, ads or abuse."
+4. The file input is now the button "Take or choose a photo", with a 120 px preview and a remove (x) button before posting (the input stays focusable, and there is a focus ring).
+5. `photo-rules.html` mentions notes, the place check and the note rules. The banner (owner text): "New: start a local conversation. Open any park, lake or playground and share a photo or a note on what is working and what can improve." with "How it works". New localStorage key `publik_banner_convo_v1`, so people who closed the old banner see this one once. The head script still hides it before first paint for people who closed this one. At 360 px it is 3 lines, 66 px high. Css/js cache version is v20.
+
+### Tests (local `wrangler dev`, local D1 and KV, a mock Telegram server on 127.0.0.1)
+- Note about lighting at a park gate: LIVE, one `sendMessage` with the right caption and Delete/Hide buttons. PASS (real Claude).
+- Note with a name, a phone number and an advert link: REJECTED with the note message, reason `private_person | person_data | spam`. PASS (real Claude).
+- Temple carving photo on a park card: REJECTED, reason "Photo shows the inside of a temple, not a park; clear place mismatch." (`place_mismatch`), with the photo message. PASS (real Claude).
+- A 2-character note, and an empty post: 400 "Add a photo, or write a short note.". A thumb without a full image: 400. Cross-origin photo POST: 403. PASS.
+- Edge (real Claude, one call): the section is first on the card (above "Right now" and "I went here"); heading, helper and button texts are right; choosing a photo shows the preview and hides the choose button; remove brings the button back and empties the file; posting a JPEG with a note went live, one thumbnail, one `sendPhoto` with the note in the caption. A stubbed note-only post sent no image parts, a text, and a Turnstile token; an empty submit shows "Choose a photo, or write a short note.". PASS.
+- Telegram, mock server: a pending photo gave `sendPhoto` with `has_spoiler: true` and a Restore button; a pending note gave `sendMessage`; a photo hidden by 2 reports gave a spoiler `sendPhoto` "HIDDEN after reports" (thumbnail 13,712 bytes read from KV). PASS.
+- Webhook: no secret header 401; wrong secret 401; right secret with a wrong chat, and with the owner chat but another sender: 200 and nothing changed; a plain message update and unknown callback data: 200, ignored. From the right chat: restore (photo and note), hide (the public image went 404), restore again, delete (both KV keys gone), delete of a note (no keys). Each time the mock got `answerCallbackQuery` and the caption or text edit ("Restored by owner", "Hidden by owner", "Deleted by owner") with the right keyboard. PASS.
+- Token: not in the dev logs or the Worker log table, and not in any response body. With the mock server stopped, the log held only "telegram sendMessage Network connection lost." PASS. (The token is in the request path to Telegram, as the Telegram API requires.)
+- Cron with notes: a seeded old rejected note row was removed, and no KV deletes were spent. PASS.
+- Banner: shows, closes, stays closed after reload, and a visitor who closed the OLD banner sees the new one. PASS.
+- Real Telegram: one plain `sendMessage` to the owner's chat returned ok. A real `sendPhoto` with a WebP thumbnail was NOT tested (the one test was used for `sendMessage`), which is why the `sendDocument` fallback exists. The first live photo after deploy will show it.
+- Not run: `telegram_setup.py` (by instruction), the real webhook round trip, a phone.
+
+### Go-live (PowerShell, from W:\apps\publik)
+```
+cd W:\apps\publik
+$env:NODE_OPTIONS = "--use-system-ca"
+# 1. Make the webhook secret and add it to .env as TELEGRAM_WEBHOOK_SECRET=<value> (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are already there)
+[guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
+# 2. Worker secrets: paste each value when asked (no pipe). Do NOT set DEV or TELEGRAM_API.
+npx wrangler secret put TELEGRAM_BOT_TOKEN
+npx wrangler secret put TELEGRAM_CHAT_ID          # 615887713
+npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
+npx wrangler secret list                            # shows the 3 new ones and still ANTHROPIC_API_KEY, TURNSTILE_SECRET, ADMIN_TOKEN, and NOT DEV
+# 3. No database migration is needed this time. Deploy:
+npx wrangler deploy
+# 4. Point Telegram at the Worker (after the deploy; pip install truststore first if Zscaler blocks it)
+python scripts/telegram_setup.py                    # prints ok: True
+# 5. Smoke test: post a note on a place from a phone; the bot should message you; tap Hide, then Restore, then Delete.
+#    Watch `npx wrangler tail` for "exceeded CPU" or "telegram" errors.
+# Rollback: npx wrangler rollback
+```
+
+## Update 2026-10-13 (night deploy: Telegram bot and conversation)
+
+- Opus review of the Telegram and conversation round: no blocker, deploy approved after one fix.
+- Fixes applied after the review:
+  - A hidden or waiting photo is never sent unblurred. If `sendPhoto` fails, only a live photo falls back to `sendDocument`. Hidden and waiting photos fall back to a text message with the buttons.
+  - The check prompt no longer ends with a plain "When unsure, reject". Unsure about safety or privacy: reject. Unsure only about the place: allow. More examples for lakes, playgrounds, toilets and odd place names.
+  - The photo rejection message now says that the photo must show this public place.
+  - Delete in Telegram also deletes the bot message, so no copy stays in the chat.
+  - The webhook gets only button taps (`allowed_updates: ["callback_query"]`).
+  - `.pic-remove` gets `z-index: 0`, so the dark circle stays behind the x and above the preview.
+- Secrets TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID and TELEGRAM_WEBHOOK_SECRET were set from `.env`. The secret list has 6 names and no DEV.
+- Local check before deploy: home page, activity, photo list and reports returned 200, and /api/tg without the secret returned 401.
+- Deployed version 6b3462b7-33af-4859-b1e5-b25c56016a73. `scripts/telegram_setup.py` set the webhook to https://publik.nxtduo.com/api/tg. getWebhookInfo shows no pending updates and no error.
+- Rollback: `npx wrangler rollback`. The webhook can stay, because the old code returns 404 on /api/tg.
+- Morning test for the owner: post one note and one WebP photo from a phone, then tap Hide, Restore and Delete in the bot. Also send one one-tap report and one "I went here".
