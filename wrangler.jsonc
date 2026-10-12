@@ -1,17 +1,42 @@
 {
-  "name": "publik",
-  "main": "src/worker.js",
-  "compatibility_date": "2026-09-01",
-  "assets": {
-    "directory": "./docs",
-    "binding": "ASSETS",
-    // Only the API runs the Worker; every other path is a static file.
-    "run_worker_first": ["/api/*"]
-  },
-  "d1_databases": [
-    { "binding": "DB", "database_name": "publik", "database_id": "0a2ea87e-8853-4bce-8d2d-43724ef1b6cd" }
-  ],
-  "routes": [
-    { "pattern": "publik.nxtduo.com", "custom_domain": true }
-  ]
+	"name": "publik",
+	// Only the custom domain serves the Worker: no workers.dev address and no preview URLs.
+	"workers_dev": false,
+	"preview_urls": false,
+	"main": "src/worker.js",
+	"compatibility_date": "2026-09-01",
+	"assets": {
+		"directory": "./docs",
+		"binding": "ASSETS",
+		// Only the API runs the Worker; every other path is a static file.
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "publik",
+			"database_id": "0a2ea87e-8853-4bce-8d2d-43724ef1b6cd"
+		}
+	],
+	// Hourly cleanup: see cleanup() in src/worker.js.
+	"triggers": {
+		"crons": [
+			"17 * * * *"
+		]
+	},
+	"routes": [
+		{
+			"pattern": "publik.nxtduo.com",
+			"custom_domain": true
+		}
+	],
+	// Photos live in Workers KV, because R2 needs a card. Create it with: npx wrangler kv namespace create PHOTOS
+	"kv_namespaces": [
+		{
+			"binding": "PHOTOS",
+			"id": "d9d1233645ef407d9116fd83ffb5d8ad"
+		}
+	]
 }

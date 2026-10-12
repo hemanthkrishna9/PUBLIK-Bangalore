@@ -1,6 +1,7 @@
 (() => {
   const REPO = "https://github.com/hemanthkrishna9/PUBLIK-Bangalore";
   const PAGE = 50;
+  const PHOTO_BANNER = true; // false hides the "add photos" notice at the top of the home page
   const CATS = [
     ["all", "All"], ["park", "Parks"], ["playground", "Playgrounds"],
     ["lake", "Lakes"], ["library", "Libraries"], ["toilet", "Toilets"],
@@ -403,6 +404,7 @@
     $("d-rating").textContent = p.reviews ? `${ratingText(p)} on Google Maps` : "";
     loadReports(p);
     loadVisits(p);
+    loadPics(p);
     $("d-feat").replaceChildren(...(p.feat || []).map((f) => { const s = document.createElement("span"); s.textContent = f; return s; }));
 
     const ll = `${p.lat},${p.lng}`;
@@ -769,6 +771,302 @@
     send.disabled = false;
   });
 
+  // Notice at the top of the home page. Closing it is remembered on this phone. The page head already hides it for a returning closer.
+  const promo = $("promo");
+  if (promo && !PHOTO_BANNER) promo.hidden = true;
+  if (promo) {
+    $("promo-x").addEventListener("click", () => {
+      promo.hidden = true;
+      try { localStorage.setItem("publik_banner_photos_v1", "1"); } catch {}
+    });
+  }
+
+  // Visitor photos. The phone shrinks each photo before it is sent, which also drops the EXIF data (GPS, camera).
+  const PIC_SIDE = { full: 1600, thumb: 400 };
+  const PIC_MAX = { full: 700 * 1024, thumb: 100 * 1024 }; // same limits as the Worker
+  // Cloudflare Turnstile site key (public). The real key is used on the live site. Only a page on localhost
+  // uses Cloudflare's test key, which always passes, so local tests work without a real widget.
+  const TURNSTILE_SITEKEY = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "1x00000000000000000000BB" : "0x4AAAAAAFU3MS1Lq3aFeNhQ";
+  const picRepKey = (id) => `publik:picrep:${id}`;
+  let deviceFallback = null;
+  // A random id kept on this phone. The server uses it to limit uploads per day.
+  function deviceId() {
+    const make = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Math.random().toString(36).slice(2) + Date.now().toString(36));
+    try {
+      let id = localStorage.getItem("publik:device");
+      if (!id) { id = make(); localStorage.setItem("publik:device", id); }
+      return id;
+    } catch { return (deviceFallback ||= make()); }
+  }
+
+  // Turnstile: a fresh widget for every upload or report, because a token works once.
+  let tsLoad = null;
+  function loadTurnstile() {
+    return (tsLoad ||= new Promise((res, rej) => {
+      if (window.turnstile) { res(window.turnstile); return; }
+      const sc = document.createElement("script");
+      sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      sc.async = true;
+      sc.onload = () => res(window.turnstile);
+      sc.onerror = () => { tsLoad = null; rej(new Error("Could not load the human check. Check your connection and try again.")); };
+      document.head.append(sc);
+    }));
+  }
+  async function turnstileToken(box, action) {
+    const ts = await loadTurnstile();
+    return new Promise((res, rej) => {
+      let wid = null, over = false;
+      const finish = (fn, v) => {
+        if (over) return;
+        over = true;
+        clearTimeout(timer);
+        if (wid !== null) try { ts.remove(wid); } catch {}
+        fn(v);
+      };
+      const timer = setTimeout(() => finish(rej, new Error("The human check took too long. Try again.")), 30000);
+      wid = ts.render(box, {
+        sitekey: TURNSTILE_SITEKEY,
+        action, // the Worker checks that the token was made for this action
+        appearance: "interaction-only", // visible only when Cloudflare needs the person to tap
+        callback: (t) => finish(res, t),
+        "error-callback": () => finish(rej, new Error("The human check failed. Reload the page and try again.")),
+      });
+      if (over) try { ts.remove(wid); } catch {}
+    });
+  }
+
+  const canvasBlob = (canvas, type, q) => new Promise((res) => canvas.toBlob(res, type, q));
+  // Older iOS Safari cannot make WebP: toBlob then returns PNG, so we use JPEG there.
+  let webpOk = null;
+  async function canMakeWebp() {
+    if (webpOk === null) {
+      const c = document.createElement("canvas");
+      c.width = c.height = 2;
+      const b = await canvasBlob(c, "image/webp", 0.75).catch(() => null);
+      webpOk = !!b && b.type === "image/webp";
+    }
+    return webpOk;
+  }
+
+  // Pixel size and camera orientation, read from the first bytes of a JPEG without decoding it. null for other files.
+  async function jpegInfo(file) {
+    try {
+      const b = new Uint8Array(await file.slice(0, 262144).arrayBuffer());
+      if (b[0] !== 0xff || b[1] !== 0xd8) return null;
+      let i = 2, orient = 1;
+      while (i + 9 < b.length) {
+        if (b[i] !== 0xff) return null;
+        const m = b[i + 1];
+        if (m === 0xff) { i++; continue; }
+        if (m === 0xda) return null;
+        if (m === 0xe1 && b[i + 4] === 0x45 && b[i + 5] === 0x78 && b[i + 6] === 0x69 && b[i + 7] === 0x66) { // "Exif"
+          const t = i + 10, le = b[t] === 0x49;
+          const u16 = (o) => (le ? b[t + o] | (b[t + o + 1] << 8) : (b[t + o] << 8) | b[t + o + 1]);
+          const u32 = (o) => (le ? (u16(o) | (u16(o + 2) << 16)) >>> 0 : ((u16(o) << 16) | u16(o + 2)) >>> 0);
+          const ifd = u32(4), n = u16(ifd);
+          for (let k = 0; k < n && k < 64; k++) { const e = ifd + 2 + k * 12; if (u16(e) === 0x0112) orient = u16(e + 8) || 1; }
+        }
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: (b[i + 5] << 8) | b[i + 6], w: (b[i + 7] << 8) | b[i + 8], orient };
+        i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+      }
+    } catch {}
+    return null;
+  }
+
+  // Decode with the camera orientation applied. Returns null when the browser cannot read the file (for example HEIC on Chrome).
+  // A very large JPEG is shrunk while it decodes, so a phone does not run out of memory (iOS Safari can crash on 48 MP photos).
+  async function decodeImage(file) {
+    if (window.createImageBitmap) {
+      const info = file.type === "image/jpeg" || /\.jpe?g$/i.test(file.name) ? await jpegInfo(file) : null;
+      if (info && Math.max(info.w, info.h) > 3200) {
+        const swap = info.orient >= 5 && info.orient <= 8; // rotated by 90 degrees
+        const w = swap ? info.h : info.w, h = swap ? info.w : info.h;
+        const k = PIC_SIDE.full / Math.max(w, h);
+        const rw = Math.round(w * k), rh = Math.round(h * k);
+        try {
+          const bmp = await createImageBitmap(file, { imageOrientation: "from-image", resizeWidth: rw, resizeHeight: rh, resizeQuality: "high" });
+          if (Math.abs(bmp.width / bmp.height - rw / rh) < 0.02) return bmp; // else this browser read the options differently
+          bmp.close();
+        } catch {}
+      }
+      try { return await createImageBitmap(file, { imageOrientation: "from-image" }); } catch {}
+      try { return await createImageBitmap(file); } catch {} // some older browsers reject the options
+    }
+    return new Promise((res) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); res(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); res(null); };
+      img.src = url;
+    });
+  }
+
+  // One resized copy: the long side is at most `side` px. Lower the quality, then the size, until it fits `max` bytes.
+  async function shrink(img, side, max) {
+    const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+    const webp = await canMakeWebp();
+    const type = webp ? "image/webp" : "image/jpeg";
+    const qs = webp ? [0.75, 0.6, 0.45] : [0.8, 0.65, 0.5];
+    for (const k of [1, 0.8, 0.64]) {
+      const scale = Math.min(1, side / Math.max(w0, h0)) * k;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(w0 * scale));
+      canvas.height = Math.max(1, Math.round(h0 * scale));
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      for (const q of qs) {
+        const blob = await canvasBlob(canvas, type, q);
+        if (blob && blob.type === type && blob.size <= max) return blob;
+      }
+    }
+    return null;
+  }
+
+  function showPics(rows) {
+    const box = $("d-pics-row");
+    if (!rows.length) { box.textContent = "No visitor photos yet. Add the first one."; box.className = "muted"; return; }
+    box.className = "pics-row";
+    box.replaceChildren(...rows.map((r) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pic-thumb";
+      b.setAttribute("aria-label", "Open visitor photo");
+      const img = document.createElement("img");
+      img.src = `/api/img/${r.id}/thumb`;
+      img.alt = "";
+      img.loading = "lazy";
+      b.append(img);
+      b.addEventListener("click", () => openPic(r, b));
+      return b;
+    }));
+  }
+
+  let picsFor = null;
+  async function loadPics(p) {
+    picsFor = p.id;
+    const sec = $("d-pics");
+    sec.hidden = false;
+    $("d-pic-form").hidden = true;
+    $("d-addpic").hidden = false;
+    $("d-pic-msg").textContent = "";
+    $("d-pics-row").textContent = "Loading...";
+    $("d-pics-row").className = "muted";
+    try {
+      const res = await fetch(`/api/photos?place=${encodeURIComponent(p.id)}`);
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      if (picsFor === p.id) showPics(data.photos);
+    } catch {
+      if (picsFor === p.id) sec.hidden = true; // no API, for example a local preview
+    }
+  }
+
+  let picOpener = null, picOpen = null;
+  function openPic(r, opener) {
+    picOpen = r.id;
+    picOpener = opener;
+    $("pv-img").src = `/api/img/${r.id}/full`;
+    $("pv-text").textContent = r.text ? `${r.text} (${ago(r.ts)})` : `Added ${ago(r.ts)}`;
+    let done = false;
+    try { done = !!localStorage.getItem(picRepKey(r.id)); } catch {}
+    $("pv-report").disabled = done;
+    $("pv-report").textContent = done ? "Reported" : "Report this photo";
+    $("pv-msg").textContent = "";
+    $("pic-view").hidden = false;
+    $("pv-close").focus();
+  }
+  function closePic() {
+    if ($("pic-view").hidden) return;
+    $("pic-view").hidden = true;
+    $("pv-img").removeAttribute("src");
+    picOpen = null;
+    if (picOpener && picOpener.isConnected) picOpener.focus();
+    picOpener = null;
+  }
+  $("pic-view").addEventListener("click", (e) => { if (e.target.closest("[data-pic-close]")) closePic(); });
+  $("pv-report").addEventListener("click", async () => {
+    const id = picOpen, msg = $("pv-msg");
+    if (!id) return;
+    $("pv-report").disabled = true;
+    msg.textContent = "Sending...";
+    try {
+      const ts = await turnstileToken($("pv-ts"), "report");
+      const res = await fetch("/api/photo-report", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, ts }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 429) throw new Error(data.error || "Could not send. Try again later.");
+      try { localStorage.setItem(picRepKey(id), "1"); } catch {}
+      $("pv-report").textContent = "Reported";
+      if (picOpen === id) msg.textContent = res.ok ? "Thanks. We will look at it." : data.error;
+    } catch (e) {
+      if (picOpen === id) { msg.textContent = e.message; $("pv-report").disabled = false; }
+    }
+  });
+
+  $("d-addpic").addEventListener("click", () => {
+    $("d-addpic").hidden = true;
+    $("d-pic-msg").textContent = "";
+    $("d-pic-form").hidden = false;
+    $("d-pic-file").focus();
+  });
+  $("d-pic-cancel").addEventListener("click", () => {
+    $("d-pic-form").hidden = true;
+    $("d-addpic").hidden = false;
+    $("d-addpic").focus();
+  });
+  $("d-pic-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = picsFor;
+    const msg = $("d-pic-msg");
+    const file = $("d-pic-file").files[0];
+    if (!file) { msg.textContent = "Pick a photo first."; return; }
+    const send = $("d-pic-form").querySelector("button[type=submit]");
+    send.disabled = true;
+    const note = (t) => { if (picsFor === id) msg.textContent = t; };
+    try {
+      note("Shrinking your photo...");
+      const img = await decodeImage(file);
+      if (!img) throw new Error("Your browser cannot read this photo format. Try a JPEG or PNG photo, or take a new picture.");
+      const blobs = {};
+      for (const k of ["full", "thumb"]) {
+        blobs[k] = await shrink(img, PIC_SIDE[k], PIC_MAX[k]);
+        if (!blobs[k]) throw new Error("This photo is too detailed to shrink. Try another one.");
+      }
+      if (img.close) img.close();
+      const ext = blobs.full.type === "image/webp" ? "webp" : "jpg";
+      const form = new FormData();
+      form.append("place", id);
+      form.append("device", deviceId());
+      form.append("text", $("d-pic-text").value.trim());
+      for (const k of ["full", "thumb"]) form.append(k, blobs[k], `${k}.${ext}`);
+      note("Checking that you are a person...");
+      form.append("cf-turnstile-response", await turnstileToken($("d-pic-ts"), "upload"));
+      note("Uploading and checking. This takes a few seconds...");
+      const res = await fetch("/api/photo", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not send. Try again later.");
+      if (data.status === "rejected") {
+        note(`Not allowed: ${data.reason || "this photo does not follow the photo rules."}`);
+      } else {
+        $("d-pic-form").reset();
+        $("d-pic-form").hidden = true;
+        $("d-addpic").hidden = false;
+        if (data.status === "live") {
+          const p = state.places.find((x) => x.id === id);
+          if (p && picsFor === id) await loadPics(p);
+          note("Live. Thanks, everyone can see your photo now.");
+        } else {
+          note("Waiting for a check. Your photo will show after the owner looks at it.");
+        }
+      }
+    } catch (err) {
+      note(err.message);
+    }
+    send.disabled = false;
+  });
+
   // Home page feed: the newest taps and visits across the city. Hidden when there are none.
   // One sentence per card, for example "Someone marked <place> as clean". Returns [before, after] the place name.
   const REPORT_SAY = {
@@ -965,7 +1263,11 @@
     $("sheet").addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) close(); });
     setupSheetDrag();
     window.addEventListener("resize", () => { if (openId !== null) setSheet(sheetMode); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheet").hidden) close(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (!$("pic-view").hidden) closePic();
+      else if (!$("sheet").hidden) close();
+    });
     // Both fire for a #id link; syncHash does nothing the second time.
     window.addEventListener("popstate", syncHash);
     window.addEventListener("hashchange", syncHash);

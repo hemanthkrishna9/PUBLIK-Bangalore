@@ -3,3 +3,6 @@ raw/*
 __pycache__/
 *.pyc
 .wrangler/
+.env
+.dev.vars
+node_modules/

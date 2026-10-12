@@ -23,9 +23,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Baloo+Tamma+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=19">
+<script>try { if (localStorage.getItem("publik_banner_photos_v1")) document.documentElement.dataset.promo = "off"; } catch (e) {}</script>
 </head>
 <body>
+<div id="promo" class="promo" role="status">
+  <p>New: add your photos of parks, lakes and playgrounds. Open any place and tap Add photo. <a href="photo-rules.html">How it works</a></p>
+  <button id="promo-x" type="button" class="promo-x" aria-label="Close this notice">&times;</button>
+</div>
 <div class="hero">
   <div class="brand">
     <h1 class="wordmark"><b>PUBLIK</b><span class="city">Bengaluru</span><span lang="kn" class="kn-tag">ಸಾರ್ವಜನಿಕ, public spaces for everyone</span></h1>
@@ -117,6 +122,26 @@
       </form>
       <p id="d-visit-msg" class="muted" role="status"></p>
     </section>
+    <section id="d-pics" hidden>
+      <h3>Photos from visitors</h3>
+      <div id="d-pics-row" class="pics-row"></div>
+      <button id="d-addpic" type="button" class="btn went">Add photo</button>
+      <form id="d-pic-form" class="visit-form" hidden>
+        <p class="muted small">Photos are public. Do not post close-up faces, children, or number plates. Photos go live after an automatic check. <a href="photo-rules.html" target="_blank" rel="noopener">Photo rules</a></p>
+        <label class="pic-field">Photo
+          <input id="d-pic-file" type="file" accept="image/*" required>
+        </label>
+        <label class="pic-field">Note, optional
+          <textarea id="d-pic-text" rows="2" maxlength="280" placeholder="What did you see? (280 characters)"></textarea>
+        </label>
+        <div id="d-pic-ts"></div>
+        <div class="actions">
+          <button type="submit" class="btn primary">Upload</button>
+          <button type="button" id="d-pic-cancel" class="btn">Cancel</button>
+        </div>
+      </form>
+      <p id="d-pic-msg" class="muted" role="status"></p>
+    </section>
     <section>
       <h3>Timings</h3>
       <div id="d-hours"></div>
@@ -137,11 +162,26 @@
   </article>
 </div>
 
+<div id="pic-view" class="pic-view" hidden role="dialog" aria-modal="true" aria-label="Visitor photo">
+  <div class="pic-view-bg" data-pic-close></div>
+  <figure class="pic-view-card">
+    <img id="pv-img" alt="Photo from a visitor">
+    <figcaption id="pv-text"></figcaption>
+    <div class="actions">
+      <button type="button" id="pv-report" class="btn">Report this photo</button>
+      <button type="button" id="pv-close" class="btn primary" data-pic-close>Close</button>
+    </div>
+    <div id="pv-ts"></div>
+    <p id="pv-msg" class="muted small" role="status"></p>
+  </figure>
+</div>
+
 <footer>
   <p>Timings come from the BBMP park list, OpenStreetMap and Google Maps. They can be out of date, so check at the place before you travel.</p>
   <p>Data: BBMP via <a href="https://data.opencity.in/dataset/bbmp-parks" target="_blank" rel="noopener">OpenCity</a>, &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>. <span id="built"></span></p>
-  <p>PUBLIK is an independent project. It is not linked to BBMP, BMRCL or Google.</p>
+  <p>PUBLIK is an independent project. It is not linked to BBMP, BMRCL or Google. <a href="photo-rules.html">Photo rules</a></p>
+  <p>Complaints about a photo: <a href="mailto:support@nxtduo.com">support@nxtduo.com</a>. We remove reported intimate or abusive photos within 24 hours.</p>
 </footer>
-<script src="app.js?v=14"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>
