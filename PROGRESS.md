@@ -215,3 +215,12 @@ Next session:
 - Decision: photos on the landing page now, user photo posts later. Open uploads need a review step before posts appear, and with about 100 visitors a day a post wall stays empty. A future post must belong to one place and must hide faces and photo location data.
 - Done: a "Places to see" strip under the hero. It shows 18 well-known places with Wikimedia Commons photos, in a random order on each visit. Each photo shows the author and license. A tap opens the place card. The list of places is `PICS` in `docs/app.js`.
 - Left out on purpose: photos that do not match the place (Christ University Library shows a lake, Doddabommasandra shows a sewage plant, Iblur shows pollution).
+
+## Update 2026-10-12 (more photo sources)
+
+- New script `scripts/open_photos.py` with two sources. All four APIs (Openverse, iNaturalist, Flickr, Mapillary) answer through Zscaler.
+- Openverse (Flickr and other open collections, no key): only CC BY, CC BY-SA, CC0 and public domain. It has no location search, so the title must name the place, its kind and Bangalore. Titles that name a neighbourhood more than 4 km away are rejected, because that is a same-name place (two Puttenahalli lakes).
+- Run 1 checked 450 places and found 12 photos, because most famous places already had a Wikimedia photo. Five were wrong (Manyata tech park, a juice glass, a post office, two other parks) and were removed by hand. Park titles must now hold the full park name, and office, shop, temple and similar titles are rejected. 7 photos are live: Begur Lake, Begur Kere, Anchepalya, Sompura, Varthur, Bellandur, National Military Memorial.
+- iNaturalist birds: research-grade bird photos (CC BY, CC BY-SA, CC0) within 600 m of each lake. 64 lakes and lake parks with 2 or more birds now show "Birds seen here" on the card. Hebbal has none, because its center is far from the shore.
+- Merge with `python scripts/build_data.py --photos` (no full rebuild). Caches are `raw/photos_openverse.json` and `raw/birds.json`.
+- Not done: Mapillary (needs a free token from a Mapillary login), the rest of the Openverse list (about 790 places, run with `open_photos.py openverse`), and a larger bird radius for big lakes.

@@ -356,9 +356,10 @@
       cap.replaceChildren(`Photo: ${p.photo.author}, `);
       const a = document.createElement("a");
       a.href = p.photo.page; a.target = "_blank"; a.rel = "noopener";
-      a.textContent = `${p.photo.license || "license"} via Wikimedia Commons`;
+      a.textContent = `${p.photo.license || "license"} via ${p.photo.source || "Wikimedia Commons"}`;
       cap.append(a);
     }
+    renderBirds(p);
     $("d-cat").className = `d-cat c-${p.cat}`;
     $("d-cat").innerHTML = `<span class="ic">${ICON[p.cat]}</span><span></span><span lang="kn"></span>`;
     $("d-cat").children[1].textContent = CAT_LABEL[p.cat];
@@ -818,6 +819,23 @@
     });
     $("live-row").replaceChildren(...cards);
     $("live").hidden = cards.length === 0;
+  }
+
+  // Lake card: birds that iNaturalist users photographed near the place.
+  function renderBirds(p) {
+    $("d-birds").hidden = !p.birds;
+    $("d-birds-row").replaceChildren(...(p.birds || []).map((b) => {
+      const f = document.createElement("figure");
+      f.className = "bird";
+      f.innerHTML = `<img alt="" loading="lazy" decoding="async"><figcaption><b></b><a target="_blank" rel="noopener"></a></figcaption>`;
+      f.querySelector("img").src = b.src;
+      f.querySelector("img").alt = b.name;
+      f.querySelector("b").textContent = b.name;
+      const a = f.querySelector("a");
+      a.href = b.page;
+      a.textContent = `${b.author}, ${b.license}`;
+      return f;
+    }));
   }
 
   // Home page photo strip: well-known places with a good Wikimedia photo, in a new order on each visit.

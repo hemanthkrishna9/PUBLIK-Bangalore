@@ -549,16 +549,32 @@ def merge_google(places):
 
 
 def merge_photos(places):
-    """Add Wikimedia Commons photos from raw/photos.json (written by wikimedia_photos.py)."""
-    path = RAW / "photos.json"
-    if not path.exists():
-        return places
-    ph = json.loads(path.read_text(encoding="utf-8"))
+    """Add free, credited photos. Wikimedia Commons first (raw/photos.json, from
+    wikimedia_photos.py), then Openverse (raw/photos_openverse.json), then lake
+    birds from iNaturalist (raw/birds.json). The last two come from open_photos.py."""
+    def cache(name):
+        path = RAW / name
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    wiki, ov, birds = cache("photos.json"), cache("photos_openverse.json"), cache("birds.json")
     for p in places:
-        if ph.get(p["id"]):
-            p["photo"] = ph[p["id"]]
-    print("photos merged:", sum(1 for p in places if "photo" in p))
+        p.pop("photo", None)
+        p.pop("birds", None)
+        if wiki.get(p["id"]):
+            p["photo"] = wiki[p["id"]]
+        elif ov.get(p["id"]):
+            p["photo"] = ov[p["id"]]
+        if len(birds.get(p["id"]) or []) >= 2:
+            p["birds"] = birds[p["id"]]
+    print("photos merged:", sum(1 for p in places if "photo" in p),
+          "places with birds:", sum(1 for p in places if "birds" in p))
     return places
+
+
+def photos_only():
+    """Merge the photo caches into the existing places.json without a full rebuild."""
+    data = json.loads(OUT.read_text(encoding="utf-8"))
+    merge_photos(data["places"])
+    OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
 def append_2016():
@@ -576,6 +592,8 @@ def append_2016():
 def main():
     if "--append-2016" in sys.argv:
         return append_2016()
+    if "--photos" in sys.argv:
+        return photos_only()
     bbmp = load_bbmp()
     osm = load_osm()
     test_parser()

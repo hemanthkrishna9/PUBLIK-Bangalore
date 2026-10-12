@@ -232,6 +232,13 @@ main { padding: 4px 0 0; }
 .photo { margin: -4px -4px 14px; }
 .photo img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-field); display: block; background: var(--wash); }
 .photo figcaption { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+.birds { display: flex; gap: 10px; overflow-x: auto; margin: 0 -4px; padding: 2px 4px 6px; scrollbar-width: none; }
+.birds::-webkit-scrollbar { display: none; }
+.bird { flex: none; width: 128px; margin: 0; }
+.bird img { width: 128px; height: 128px; object-fit: cover; border-radius: var(--radius-field); display: block; background: var(--wash); }
+.bird figcaption { display: flex; flex-direction: column; gap: 1px; margin-top: 5px; font-size: .78rem; line-height: 1.25; }
+.bird figcaption b { color: var(--ink); font-size: .85rem; }
+.bird figcaption a { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .photos-link { display: block; margin-top: 14px; text-align: center; font-weight: 700; font-size: .95rem; }
 
 /* Right now: what visitors reported */
