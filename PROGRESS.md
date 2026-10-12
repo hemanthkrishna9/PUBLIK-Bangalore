@@ -592,3 +592,5 @@ python scripts/telegram_setup.py                    # prints ok: True
 - Deployed version 6b3462b7-33af-4859-b1e5-b25c56016a73. `scripts/telegram_setup.py` set the webhook to https://publik.nxtduo.com/api/tg. getWebhookInfo shows no pending updates and no error.
 - Rollback: `npx wrangler rollback`. The webhook can stay, because the old code returns 404 on /api/tg.
 - Morning test for the owner: post one note and one WebP photo from a phone, then tap Hide, Restore and Delete in the bot. Also send one one-tap report and one "I went here".
+- Live log, 21 minutes after the night deploy: 1 request (home page activity, 200, ok), no errors, no exceptions, no Telegram errors. Traffic was too low at night to exercise reports, visits or uploads, so the morning phone test is still needed.
+- The laptop was put to sleep after this check, at the owner's request.
