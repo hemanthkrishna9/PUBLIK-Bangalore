@@ -594,3 +594,12 @@ python scripts/telegram_setup.py                    # prints ok: True
 - Morning test for the owner: post one note and one WebP photo from a phone, then tap Hide, Restore and Delete in the bot. Also send one one-tap report and one "I went here".
 - Live log, 21 minutes after the night deploy: 1 request (home page activity, 200, ok), no errors, no exceptions, no Telegram errors. Traffic was too low at night to exercise reports, visits or uploads, so the morning phone test is still needed.
 - The laptop was put to sleep after this check, at the owner's request.
+
+## Future idea: optional Google sign-in (parked 2026-10-13)
+
+- Owner asked about logins. Decision: keep for the future.
+- Proposed shape: sign-in stays optional. Anonymous notes and photos stay as they are. Google sign-in unlocks only what needs a real person: organizing a clean-up drive, reminders for people who joined, and a name on a contributor board (Arka's ideas 2 and 3).
+- Build: Google Identity Services on the page, the Worker checks the Google ID token, D1 holds sessions. Free. About a few hours of agent work plus a review.
+- Costs before building: a privacy notice, consent, account and post deletion, and request handling under India's DPDP Act, because emails and names would be stored. The owner must create a Google Cloud project (personal account) with a consent screen and the allowed web address.
+- Messaging people who joined a drive: email from the site through a provider such as Resend. Check that it works behind Zscaler first. Organizers never see emails or phone numbers.
+- Before building: write a plan with the data stored and the privacy notice, and get an Opus critique.
