@@ -8,6 +8,9 @@
 	"assets": {
 		"directory": "./docs",
 		"binding": "ASSETS",
+		// A missing page returns docs/404.html with status 404. Folder pages such as /parks/ resolve
+		// from docs/parks/index.html (the default html_handling), and /parks redirects to /parks/.
+		"not_found_handling": "404-page",
 		// Only the API runs the Worker; every other path is a static file.
 		"run_worker_first": [
 			"/api/*"

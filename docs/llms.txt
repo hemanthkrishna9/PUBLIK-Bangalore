@@ -1,0 +1,55 @@
+# PUBLIK Bengaluru
+
+> PUBLIK is a free, independent website that lists 1,886 public places in Bengaluru (Bangalore): parks, playgrounds, lakes, libraries and public toilets. Each place has opening times where known, features, and a directions link. No sign-in.
+
+Timings come from the BBMP park list (via OpenCity), OpenStreetMap and Google Maps. They can be out of date. Data built 2026-10-09. Not every place has timings, and the pages say so when they are not known.
+
+## Pages
+
+- [Home: the map, search and open-now status](https://publik.nxtduo.com/)
+- [Parks in Bengaluru](https://publik.nxtduo.com/parks/): 1085 places, 503 with timings
+- [Playgrounds in Bengaluru](https://publik.nxtduo.com/playgrounds/): 66 places, 26 with timings
+- [Lakes in Bengaluru](https://publik.nxtduo.com/lakes/): 186 places, 9 with timings
+- [Libraries in Bengaluru](https://publik.nxtduo.com/libraries/): 96 places, 57 with timings
+- [Public toilets in Bengaluru](https://publik.nxtduo.com/public-toilets/): 453 places, 164 with timings
+
+## Areas (largest first)
+
+- [Jayanagar](https://publik.nxtduo.com/area/jayanagar/): 38 places
+- [Koramangala](https://publik.nxtduo.com/area/koramangala/): 32 places
+- [Someshwara](https://publik.nxtduo.com/area/someshwara/): 32 places
+- [Rajajinagar](https://publik.nxtduo.com/area/rajajinagar/): 25 places
+- [Jnana Bharathi](https://publik.nxtduo.com/area/jnana-bharathi/): 24 places
+- [Chokkasandra](https://publik.nxtduo.com/area/chokkasandra/): 20 places
+- [Balepet](https://publik.nxtduo.com/area/balepet/): 17 places
+- [Shanthala Nagar](https://publik.nxtduo.com/area/shanthala-nagar/): 17 places
+- [Ullal](https://publik.nxtduo.com/area/ullal/): 16 places
+- [Vidyaranyapura](https://publik.nxtduo.com/area/vidyaranyapura/): 16 places
+- [Domlur](https://publik.nxtduo.com/area/domlur/): 15 places
+- [Kottige Palya](https://publik.nxtduo.com/area/kottige-palya/): 15 places
+- [HSR Layout](https://publik.nxtduo.com/area/hsr-layout/): 14 places
+- [Milk Colony](https://publik.nxtduo.com/area/milk-colony/): 14 places
+- [Herohalli](https://publik.nxtduo.com/area/herohalli/): 13 places
+- [JP Nagar](https://publik.nxtduo.com/area/jp-nagar/): 13 places
+- [Rajarajeshwari](https://publik.nxtduo.com/area/rajarajeshwari/): 13 places
+- [Anchepalya](https://publik.nxtduo.com/area/anchepalya/): 12 places
+- [BTM Layout](https://publik.nxtduo.com/area/btm-layout/): 12 places
+- [Banashankari](https://publik.nxtduo.com/area/banashankari/): 12 places
+- [Gandhinagar](https://publik.nxtduo.com/area/gandhinagar/): 12 places
+- [Hemmigepura](https://publik.nxtduo.com/area/hemmigepura/): 12 places
+- [Kenchenahalli](https://publik.nxtduo.com/area/kenchenahalli/): 12 places
+- [Lakkasandra](https://publik.nxtduo.com/area/lakkasandra/): 11 places
+- [Yelahanka Newtown](https://publik.nxtduo.com/area/yelahanka-newtown/): 10 places
+- [Dubasi Palya](https://publik.nxtduo.com/area/dubasi-palya/): 9 places
+- [Malleswaram](https://publik.nxtduo.com/area/malleswaram/): 9 places
+- [Nagapura](https://publik.nxtduo.com/area/nagapura/): 9 places
+- [Nandini Layout](https://publik.nxtduo.com/area/nandini-layout/): 9 places
+- [Sanjaya Nagara](https://publik.nxtduo.com/area/sanjaya-nagara/): 9 places
+
+## Places
+
+Each place has a page at https://publik.nxtduo.com/place/<name-area>/ with timings, features, directions and nearby places. The sitemap at https://publik.nxtduo.com/sitemap.xml lists the 806 place pages that have timings or features.
+
+## Credits
+
+BBMP park list via OpenCity. OpenStreetMap contributors (ODbL). Google Maps for some timings.

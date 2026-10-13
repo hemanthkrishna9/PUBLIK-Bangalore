@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PUBLIK Bengaluru: parks, lakes, libraries, toilets</title>
-<meta name="description" content="Find free public spaces in Bengaluru: 1,600 parks, playgrounds, lakes, libraries and public toilets, with open-now status, timings and directions.">
+<meta name="description" content="Find free public spaces in Bengaluru: about 1,880 parks, playgrounds, lakes, libraries and public toilets, with open-now status, timings and directions.">
 <meta name="theme-color" content="#e4e7e3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e1712" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://publik.nxtduo.com/">
@@ -23,12 +23,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Baloo+Tamma+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 <script>try { if (localStorage.getItem("publik_banner_convo_v1")) document.documentElement.dataset.promo = "off"; } catch (e) {}</script>
 </head>
 <body>
 <div id="promo" class="promo" role="status">
-  <p>New: start a local conversation. Open any park, lake or playground and share a photo or a note on what is working and what can improve. <a href="photo-rules.html">How it works</a></p>
+  <p>New: start a local conversation. Open any park, lake or playground and share a photo or a note on what is working and what can improve. <a href="/photo-rules">How it works</a></p>
   <button id="promo-x" type="button" class="promo-x" aria-label="Close this notice">&times;</button>
 </div>
 <div class="hero">
@@ -107,7 +107,7 @@
       <div id="d-pics-row" class="pics-row"></div>
       <button id="d-addpic" type="button" class="btn went">Add photo or note</button>
       <form id="d-pic-form" class="visit-form" hidden>
-        <p class="muted small">Photos and notes are public. Do not post close-up faces, children, names, phone numbers or number plates. They go live after an automatic check. <a href="photo-rules.html" target="_blank" rel="noopener">Photo rules</a></p>
+        <p class="muted small">Photos and notes are public. Do not post close-up faces, children, names, phone numbers or number plates. They go live after an automatic check. <a href="/photo-rules" target="_blank" rel="noopener">Photo rules</a></p>
         <div class="pic-field">
           <input id="d-pic-file" class="pic-file" type="file" accept="image/*">
           <label for="d-pic-file" id="d-pic-btn" class="btn pic-btn">Take or choose a photo</label>
@@ -183,9 +183,18 @@
 </div>
 
 <footer>
+<!-- seo-links:start (written by scripts/build_pages.py) -->
+<nav class="browse" aria-label="Browse PUBLIK pages">
+<h2>Browse by kind of place</h2>
+<ul><li><a href="/parks/">Parks in Bengaluru</a></li><li><a href="/playgrounds/">Playgrounds in Bengaluru</a></li><li><a href="/lakes/">Lakes in Bengaluru</a></li><li><a href="/libraries/">Libraries in Bengaluru</a></li><li><a href="/public-toilets/">Public toilets in Bengaluru</a></li></ul>
+<h2>Browse by area</h2>
+<ul><li><a href="/area/jayanagar/">Jayanagar</a></li><li><a href="/area/koramangala/">Koramangala</a></li><li><a href="/area/someshwara/">Someshwara</a></li><li><a href="/area/rajajinagar/">Rajajinagar</a></li><li><a href="/area/jnana-bharathi/">Jnana Bharathi</a></li><li><a href="/area/chokkasandra/">Chokkasandra</a></li><li><a href="/area/balepet/">Balepet</a></li><li><a href="/area/shanthala-nagar/">Shanthala Nagar</a></li><li><a href="/area/ullal/">Ullal</a></li><li><a href="/area/vidyaranyapura/">Vidyaranyapura</a></li><li><a href="/area/domlur/">Domlur</a></li><li><a href="/area/kottige-palya/">Kottige Palya</a></li><li><a href="/area/hsr-layout/">HSR Layout</a></li><li><a href="/area/milk-colony/">Milk Colony</a></li><li><a href="/area/herohalli/">Herohalli</a></li><li><a href="/area/jp-nagar/">JP Nagar</a></li><li><a href="/area/rajarajeshwari/">Rajarajeshwari</a></li><li><a href="/area/anchepalya/">Anchepalya</a></li><li><a href="/area/btm-layout/">BTM Layout</a></li><li><a href="/area/banashankari/">Banashankari</a></li><li><a href="/area/gandhinagar/">Gandhinagar</a></li><li><a href="/area/hemmigepura/">Hemmigepura</a></li><li><a href="/area/kenchenahalli/">Kenchenahalli</a></li><li><a href="/area/lakkasandra/">Lakkasandra</a></li><li><a href="/area/yelahanka-newtown/">Yelahanka Newtown</a></li><li><a href="/area/dubasi-palya/">Dubasi Palya</a></li><li><a href="/area/malleswaram/">Malleswaram</a></li><li><a href="/area/nagapura/">Nagapura</a></li><li><a href="/area/nandini-layout/">Nandini Layout</a></li><li><a href="/area/sanjaya-nagara/">Sanjaya Nagara</a></li></ul>
+</nav>
+<!-- seo-links:end -->
   <p>Timings come from the BBMP park list, OpenStreetMap and Google Maps. They can be out of date, so check at the place before you travel.</p>
   <p>Data: BBMP via <a href="https://data.opencity.in/dataset/bbmp-parks" target="_blank" rel="noopener">OpenCity</a>, &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>. <span id="built"></span></p>
-  <p>PUBLIK is an independent project. It is not linked to BBMP, BMRCL or Google. <a href="photo-rules.html">Photo rules</a></p>
+  <p>PUBLIK is an independent project. It is not linked to BBMP, BMRCL or Google. <a href="/photo-rules">Photo rules</a></p>
+  <p>Also by NxtDuo: <a href="https://ramana.nxtduo.com/">Talk with Ramana</a>, an AI chat built from Ramana Maharshi's recorded words.</p>
   <p>Complaints about a photo: <a href="mailto:support@nxtduo.com">support@nxtduo.com</a>. We remove reported intimate or abusive photos within 24 hours.</p>
 </footer>
 <script src="app.js?v=20"></script>

@@ -603,3 +603,32 @@ python scripts/telegram_setup.py                    # prints ok: True
 - Costs before building: a privacy notice, consent, account and post deletion, and request handling under India's DPDP Act, because emails and names would be stored. The owner must create a Google Cloud project (personal account) with a consent screen and the allowed web address.
 - Messaging people who joined a drive: email from the site through a provider such as Resend. Check that it works behind Zscaler first. Organizers never see emails or phone numbers.
 - Before building: write a plan with the data stored and the privacy notice, and get an Opus critique.
+
+## Update 2026-10-13 (SEO pages)
+
+Goal: let Google find real Bengaluru searches ("cubbon park timings", "parks in koramangala"). Before this, the sitemap had 2 URLs. Not deployed, not committed.
+
+- Read scripts/build_data.py, docs/app.js (category ids, hours rules: `hours` = same every day, `week` = per day with 0 = Sunday, `hoursText` = raw OSM text) and wrangler.jsonc.
+- Added scripts/build_pages.py (standard library only). It writes docs/parks, playgrounds, lakes, libraries, public-toilets (5 pages), docs/area/<slug>/ (143 pages), docs/place/<slug>/ (1,886 pages), 404.html, pages.css, sitemap.xml, llms.txt, and a link block in docs/index.html between `seo-links` markers. Two runs give byte-identical files (checked by hashing the tree). No timestamps; lastmod is the data's "built" date (2026-10-09).
+- Added scripts/check_pages.py. Result: 2,035 files, 0 problems (one canonical, one h1, unique titles under 60 chars, descriptions 140 to 160 chars, JSON-LD parses, breadcrumb, OG and Twitter tags). 404.html has no canonical on purpose and is noindex.
+- Decision, area names: 675 raw area strings become 621 areas. Merged only spelling variants (HSR Layout/Hsr Layout, Singasandra/Singa Sandra, Yelahanka Newtown/New Town, K.R.Puram/KR Puram, Chikkala Sandra, Jakka Sandra, Byra Sandra, Kumara Swamy Layout, BTM/BTM Layout, Bagalakunte, Banaswadi, Begur) and stripped "Nth Block/Stage/Phase" so Koramangala 5th Block joins Koramangala. A place keeps its original label and shows it ("listed under Koramangala 5th Block"). Odd labels like "Rajajinagara 1st N Block" and "Sector 6" were not merged. Areas starting with a digit or "Sector" get no page.
+- Decision, area page threshold: 4 or more places and a real name. 143 area pages.
+- Decision, indexable place: has timings, OSM text timings, features or a bird list. Otherwise `noindex,follow` and left out of the sitemap. 922 indexable, 964 noindex. Ratings and review counts in the data are not shown anywhere (no ratings rule).
+- Place slug: name plus area (area skipped when the name already has it), numbered -2, -3 on a clash. Titles that clash get a number too.
+- Nearby links on place pages point to the 5 nearest indexable places. Category and area lists link every place (noindex pages are reachable, they just are not in the sitemap).
+- Sitemap: 1,072 URLs = home, photo-rules, 5 categories, 143 areas, 922 places. robots.txt unchanged (already points to it).
+- Found: /photo-rules.html answers 307 to /photo-rules (Workers default html_handling). The old sitemap listed the redirecting URL. Fixed: sitemap and photo-rules.html canonical/og:url now use /photo-rules.
+- wrangler.jsonc: added `"not_found_handling": "404-page"` so a missing URL returns docs/404.html with status 404 (before: a bare 404). Folder pages already resolve (/parks/ serves docs/parks/index.html; /parks redirects 307 to /parks/). `run_worker_first` still only /api/*, so the API wins.
+- docs/style.css: 3 small rules for the home link block (.browse). index.html stylesheet version bumped v20 to v21. No JS change.
+- Local test with `wrangler dev` on 127.0.0.1:8799 (local only): / 200, /parks/ 200, /area/koramangala/ 200, /place/cubbon-park-dsouza-layout/ 200, a noindex place 200 (robots meta present), /nope/ 404 (custom page), /photo-rules 200, /sitemap.xml 200, /api/activity 200, /api/nothing 404 JSON.
+- Test trouble: the first wrangler dev hung after the files were rebuilt under it. Killed all wrangler and workerd processes and started one clean instance. All stopped at the end.
+- Sizes: category pages 407 KB, area pages 778 KB, place pages 10.56 MB, total 11.74 MB for the 7 folders (place pages avg 5.6 KB).
+- Open: Cubbon Park's area in our data is "D'Souza Layout" (from reverse geocoding), so its page says that. Fixing area labels is a data job. Home page copy still says "1,600"; the real count is 1,886.
+- To publish: run `python scripts/build_pages.py`, then `npx wrangler deploy` (owner to approve). After deploy, submit /sitemap.xml in Search Console.
+
+### Review and fixes (2026-10-13, after the SEO build)
+- An Opus review found 0 broken links, valid JSON-LD and a clean sitemap. It flagged thin, near-duplicate place pages as a Google risk.
+- Fix: `indexable()` in scripts/build_pages.py now leaves out generic names ("Public toilet, X", "BBMP park"), toilets with no timings, and libraries that are not public (Just Books, colleges, clubs). Free/Paid chips no longer count as content.
+- Result: 806 indexed place pages, 1,080 noindex, 956 sitemap URLs. check_pages.py: 0 problems.
+- Home page: footer line "Also by NxtDuo: Talk with Ramana" links to ramana.nxtduo.com. Count in the meta description is now "about 1,880". Photo rules links use /photo-rules.
+- Open: the static pages repeat Google Maps timings for 519 places (owner accepted this risk on 2026-10-09). Wrong area labels from geocoding (Cubbon Park under "D'Souza Layout", "Someshwara" holds Yelahanka New Town parks) need a fix in build_data.py.

@@ -535,3 +535,8 @@ footer p { margin: 0 0 6px; }
 }
 .pic-view-card figcaption { font-size: 1.02rem; }
 .pic-view-card img[hidden] { display: none; }
+
+/* Crawlable links to the static category and area pages (written into index.html by scripts/build_pages.py). */
+.browse h2 { font-size: .95rem; margin: 14px 0 6px; color: var(--ink); }
+.browse ul { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.browse a { color: var(--canopy); }
