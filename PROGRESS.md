@@ -633,3 +633,15 @@ Goal: let Google find real Bengaluru searches ("cubbon park timings", "parks in 
 - Home page: footer line "Also by NxtDuo: Talk with Ramana" links to ramana.nxtduo.com. Count in the meta description is now "about 1,880". Photo rules links use /photo-rules.
 - Open: the static pages repeat Google Maps timings for 519 places (owner accepted this risk on 2026-10-09). Wrong area labels from geocoding (Cubbon Park under "D'Souza Layout", "Someshwara" holds Yelahanka New Town parks) need a fix in build_data.py.
 - Deployed 2026-10-14: PUBLIK version f7ca0ca1, ramana a934a171 (also shipped the other session's commit 6d84d1b), nxtduo.com build f26dbea passed. Owner to submit both sitemaps in Search Console.
+
+## Update 2026-10-14 (search and sharing)
+- Google Search Console: Domain property nxtduo.com verified by DNS TXT in Cloudflare (covers all subdomains). Do not remove the record. Sitemaps for nxtduo.com, publik and ramana submitted. Indexing requested for the main pages.
+- Crawl check, 14 Oct: ClaudeBot read 2,034 of the new pages. Googlebot made its first visits (4 PUBLIK pages, 3 ramana pages). site:ramana.nxtduo.com still showed no results that day.
+- Traffic, 11 to 14 Oct: about 55 people a day, 184 in 3 days (117 India). 191 place cards opened, 8 reports, 2 "I went here", 1 live photo, 0 notes.
+- Owner posted Ramana chat in r/ClaudeAI (flair "Built with Claude") and r/AdvaitaVedanta. Drafts for r/RamanaMaharshi are in ramana-bot/SHARE_PLACES.md and the chat. A WhatsApp update for the SBA group was drafted.
+- Next:
+  - Telegram moderation group for the owner and a friend: the owner creates the group with the bot, then the code allows a list of user ids.
+  - Daily 8 am IST Telegram traffic report: the owner sets the Worker secret CF_ANALYTICS_TOKEN (Zone Analytics Read, nxtduo.com only).
+  - Fix wrong geocoded area names in build_data.py, for example Cubbon Park under "D'Souza Layout".
+  - Optional: Bing Webmaster import from Search Console, and IndexNow for publik and ramana.
+  - Check Search Console Pages in 2 to 3 days.
