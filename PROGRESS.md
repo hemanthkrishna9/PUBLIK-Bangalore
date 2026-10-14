@@ -632,3 +632,4 @@ Goal: let Google find real Bengaluru searches ("cubbon park timings", "parks in 
 - Result: 806 indexed place pages, 1,080 noindex, 956 sitemap URLs. check_pages.py: 0 problems.
 - Home page: footer line "Also by NxtDuo: Talk with Ramana" links to ramana.nxtduo.com. Count in the meta description is now "about 1,880". Photo rules links use /photo-rules.
 - Open: the static pages repeat Google Maps timings for 519 places (owner accepted this risk on 2026-10-09). Wrong area labels from geocoding (Cubbon Park under "D'Souza Layout", "Someshwara" holds Yelahanka New Town parks) need a fix in build_data.py.
+- Deployed 2026-10-14: PUBLIK version f7ca0ca1, ramana a934a171 (also shipped the other session's commit 6d84d1b), nxtduo.com build f26dbea passed. Owner to submit both sitemaps in Search Console.
