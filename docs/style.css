@@ -540,3 +540,35 @@ footer p { margin: 0 0 6px; }
 .browse h2 { font-size: .95rem; margin: 14px 0 6px; color: var(--ink); }
 .browse ul { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .browse a { color: var(--canopy); }
+
+/* NxtDue card: a sister app by NxtDuo, floating over the page. Publik's own card style; only the icon brings
+   NxtDue's colour. Above the sticky search bar, below the place sheet and photo viewer. Closable. */
+.nd { position: fixed; z-index: 6; top: 64px; right: 16px; width: 290px; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 18px; background: var(--paper); border: 1px solid var(--rule); box-shadow: 0 14px 36px rgba(20, 42, 29, .18); animation: nd-in .5s ease .6s both, nd-float 5s ease-in-out 1.1s infinite; }
+.nd[hidden], [data-nd="off"] .nd { display: none; }
+.nd-x { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+.nd-x:hover { background: var(--wash); color: var(--ink); }
+.nd-x:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.nd-icon { flex: none; width: 48px; height: 48px; border-radius: 12px; }
+.nd-body { min-width: 0; padding-right: 18px; }
+.nd-tag { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.nd-h { margin: 2px 0 0; font-family: var(--display); font-size: 1.25rem; line-height: 1.1; font-weight: 800; color: var(--ink); }
+.nd-sub { margin: 4px 0 0; font-size: .88rem; line-height: 1.35; color: var(--muted); }
+.nd-store { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 14px; border-radius: var(--radius-pill); background: var(--ink); color: var(--paper); font-size: .85rem; font-weight: 700; text-decoration: none; }
+.nd-store:hover { opacity: .88; }
+.nd-store:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+@keyframes nd-in { from { opacity: 0; transform: translateY(-12px); } }
+@keyframes nd-float { 50% { transform: translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) { .nd { animation: none; } }
+/* Phones, tablets and small laptops: a slim floating bar at the bottom right, so it never covers the title or the search */
+@media (max-width: 1239px) {
+  .nd { top: auto; bottom: 12px; right: 12px; width: min(440px, calc(100% - 24px)); align-items: center; padding: 10px 12px; gap: 10px; animation: nd-up .5s ease .8s both; }
+  .nd-icon { width: 40px; height: 40px; border-radius: 10px; }
+  .nd-tag, .nd-sub { display: none; }
+  .nd-body { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1; padding-right: 26px; }
+  .nd-h { margin: 0; font-size: 1rem; }
+  .nd-h::after { content: "Never miss a renewal"; display: block; font-family: var(--text); font-size: .75rem; font-weight: 400; color: var(--muted); }
+  .nd-store { margin: 0; padding: 7px 12px; font-size: .8rem; white-space: nowrap; }
+  .nd-x { top: 50%; transform: translateY(-50%); }
+  html:not([data-nd="off"]) footer { padding-bottom: 90px; }
+  @keyframes nd-up { from { opacity: 0; transform: translateY(16px); } }
+}

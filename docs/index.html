@@ -23,8 +23,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Baloo+Tamma+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css?v=21">
-<script>try { if (localStorage.getItem("publik_banner_convo_v1")) document.documentElement.dataset.promo = "off"; } catch (e) {}</script>
+<link rel="stylesheet" href="style.css?v=25">
+<script>try { if (localStorage.getItem("publik_banner_convo_v1")) document.documentElement.dataset.promo = "off"; if (sessionStorage.getItem("publik_nd_v1")) document.documentElement.dataset.nd = "off"; } catch (e) {}</script>
 </head>
 <body>
 <div id="promo" class="promo" role="status">
@@ -40,6 +40,17 @@
       <span class="hint">Opens a good place that is open now.</span>
     </div>
   </div>
+  <!-- NxtDue: a sister app by NxtDuo. A plain link: no tracking, no third-party code. -->
+  <aside class="nd" id="nd" aria-labelledby="nd-h">
+    <button id="nd-x" type="button" class="nd-x" aria-label="Close the NxtDue card">&times;</button>
+    <img class="nd-icon" src="/img/nxtdue.webp" alt="" width="48" height="48">
+    <div class="nd-body">
+      <p class="nd-tag">New on iPhone</p>
+      <h2 id="nd-h" class="nd-h">NxtDue</h2>
+      <p class="nd-sub">Never miss your bike insurance, PUC or passport renewal again.</p>
+      <a class="nd-store" href="https://apps.apple.com/in/app/nxtdue-renewal-reminders/id6804763092" target="_blank" rel="noopener" aria-label="Download NxtDue on the App Store"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>App Store &middot; Free</a>
+    </div>
+  </aside>
 </div>
 <section id="pics" class="pics" hidden aria-labelledby="pics-h">
   <h2 id="pics-h">Places to see</h2>
@@ -86,6 +97,7 @@
   <button id="more" class="btn wide" hidden>Show 50 more</button>
   <p id="empty" class="muted center" hidden>No places match. Try another search.</p>
 </main>
+
 
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-bg" data-close></div>
@@ -197,6 +209,6 @@
   <p>Also by NxtDuo: <a href="https://ramana.nxtduo.com/">Talk with Ramana</a>, an AI chat built from Ramana Maharshi's recorded words.</p>
   <p>Complaints about a photo: <a href="mailto:support@nxtduo.com">support@nxtduo.com</a>. We remove reported intimate or abusive photos within 24 hours.</p>
 </footer>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

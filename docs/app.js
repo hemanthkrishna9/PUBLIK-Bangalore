@@ -781,6 +781,15 @@
     });
   }
 
+  // Floating NxtDue card (a sister app). Closing it hides it for this visit only; it shows again on the next visit.
+  const nd = $("nd");
+  if (nd) {
+    $("nd-x").addEventListener("click", () => {
+      nd.hidden = true;
+      try { sessionStorage.setItem("publik_nd_v1", "1"); } catch {}
+    });
+  }
+
   // Visitor photos. The phone shrinks each photo before it is sent, which also drops the EXIF data (GPS, camera).
   const PIC_SIDE = { full: 1600, thumb: 400 };
   const PIC_MAX = { full: 700 * 1024, thumb: 100 * 1024 }; // same limits as the Worker
