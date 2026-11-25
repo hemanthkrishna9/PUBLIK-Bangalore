@@ -377,7 +377,7 @@ def main():
     centers = {n: (sum(p["lat"] for p in ps) / len(ps), sum(p["lng"] for p in ps) / len(ps)) for n, ps in by_area.items()}
 
     GENERIC = re.compile(r"^(public toilets?|bbmp park|park|playground|toilet|bda park)\b", re.I)
-    NOT_PUBLIC = re.compile(r"just ?books|nimhans|iisc|hospital|universit|college|institute|school|club|wipro|\biim", re.I)
+    NOT_PUBLIC = re.compile(r"just ?books|nimhans|iisc|jrd tata|hospital|medical association|eloor|law library|kahaani|universit|college|institute|school|club|wipro|\biim", re.I)
 
     def indexable(p):
         # Thin pages stay noindex: generic names ("Public toilet, X"), toilets without timings,
@@ -677,7 +677,7 @@ def main():
          "The 50 largest parks on the BBMP list."),
         ("libraries-open-on-sunday", "Libraries open on Sunday in Bengaluru",
          "Public libraries in Bengaluru that are open on Sunday morning, listed by area.",
-         [p for p in places if p["cat"] == "library" and listable(p) and open_at(p, 0, "11:00")], "Open on Sunday at 11 am."),
+         [p for p in places if p["cat"] == "library" and listable(p) and "Paid" not in (p.get("feat") or []) and open_at(p, 0, "11:00")], "Open on Sunday at 11 am."),
         ("public-toilets-open-24-hours", "Public toilets open 24 hours in Bengaluru",
          "Public toilets in Bengaluru that are open all night, every day, listed by area.",
          [p for p in places if p["cat"] == "toilet" and not PRIVATE.search(p["name"]) and all(open_at(p, d, "02:00") for d in range(7))], "Open all night, every day."),
