@@ -44,8 +44,9 @@ DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satur
 MON_FIRST = [1, 2, 3, 4, 5, 6, 0]
 
 # Area names that are one place written two ways. Spelling variants only, nothing guessed.
-ALIAS = {"btm": "btmlayout", "bagalakunte": "bagalagunte", "banaswadi": "banasavadi", "begur": "beguru"}
-DISPLAY = {"hsrlayout": "HSR Layout", "krpuram": "KR Puram", "btmlayout": "BTM Layout"}
+# "Someshwara" is a reverse-geocoding error: its 32 parks sit in Yelahanka New Town and most names say so.
+ALIAS = {"someshwara": "yelahankanewtown", "btm": "btmlayout", "bagalakunte": "bagalagunte", "banaswadi": "banasavadi", "begur": "beguru"}
+DISPLAY = {"yelahankanewtown": "Yelahanka New Town", "hsrlayout": "HSR Layout", "krpuram": "KR Puram", "btmlayout": "BTM Layout"}
 SUB_RE = re.compile(r"^(.*?)\s+\d+(?:st|nd|rd|th)\s+(?:Block|Stage|Phase)$")
 
 FILLERS = [
@@ -208,10 +209,18 @@ def pick_title(cands, mx=59, tail=" | PUBLIK"):
 
 # ---------- areas ----------
 
+# Famous places whose reverse-geocoded area is wrong or unknown to most people. Checked by hand, 25 Nov 2026.
+PLACE_AREA = {"osm-w22895320": "MG Road",          # Cubbon Park (was "D'Souza Layout")
+              "osm-w182177279": "Ulsoor",          # Ulsoor Lake Park (was "Kalahalli")
+              "osm-r1857615": "Ulsoor"}            # Ulsoor Lake (was "Kothandram Layout")
+
+
 def normalise_areas(places):
     """Set p['_area'] (merged area name or None) and p['_sub'] (original label when it differs)."""
     keyed = {}
     for p in places:
+        if p["id"] in PLACE_AREA:
+            p["area"] = PLACE_AREA[p["id"]]
         raw = re.sub(r"\s+", " ", (p.get("area") or "").strip())
         if not raw:
             p["_ak"] = None
@@ -226,7 +235,7 @@ def normalise_areas(places):
     for p in places:
         if p["_ak"]:
             p["_area"] = names[p["_ak"]]
-            p["_sub"] = p["_raw"] if p["_raw"] != p["_area"] else None
+            p["_sub"] = p["_raw"] if p["_raw"] != p["_area"] and akey(p["_raw"]) not in ALIAS else None
         else:
             p["_area"] = p["_sub"] = None
 
@@ -292,17 +301,40 @@ HEADER = ('<header class="site"><a class="brand" href="/"><b>PUBLIK</b> <span>Be
           '<a class="open-app" href="/">Open the map</a></header>')
 
 
-def shell(top, body, built):
+def share_html(text, url):
+    """WhatsApp share link. Plain link, works without scripts."""
+    from urllib.parse import quote
+    href = "https://wa.me/?text=" + quote(f"{text} {SITE}{url}")
+    return (f'<p class="share"><a class="btn wa" href="{esc(href)}" target="_blank" rel="noopener" data-ev="share_wa">'
+            '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.5-.3z"/></svg>'
+            'Share on WhatsApp</a></p>')
+
+
+# NxtDue: a sister app by NxtDuo. Plain store links; taps are counted by /pv.js (no ids, no cookies).
+NXTDUE_CARD = (
+    '<aside class="nd" aria-labelledby="nd-h"><img src="/img/nxtdue.webp" alt="" width="48" height="48" loading="lazy">'
+    '<div><p class="nd-tag">Also by NxtDuo</p><h2 id="nd-h">NxtDue</h2>'
+    '<p>Never miss your bike insurance, PUC or passport renewal again. Free.</p>'
+    '<p class="nd-links"><a href="https://apps.apple.com/in/app/nxtdue-renewal-reminders/id6804763092" target="_blank" rel="noopener" data-ev="nxtdue_ios">App Store</a>'
+    '<a href="https://play.google.com/store/apps/details?id=com.nxtdue.app&amp;referrer=utm_source%3Dpublik%26utm_medium%3Dsite" target="_blank" rel="noopener" data-ev="nxtdue_android">Google Play</a></p>'
+    '</div></aside>')
+
+
+def shell(top, body, built, share=None):
+    sh = share_html(*share) if share else ""
     return top + f"""<body>
 {HEADER}
 <main>
 {body}
+{sh}
+{NXTDUE_CARD}
 </main>
 <footer class="site">
 <p>Timings come from the BBMP park list, OpenStreetMap and Google Maps. They can be out of date, so check at the place before you travel.</p>
 <p>Data: BBMP via <a href="https://data.opencity.in/dataset/bbmp-parks" rel="noopener">OpenCity</a>, &copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>. Data built {esc(built)}.</p>
 <p>PUBLIK is an independent project. It is not linked to BBMP, BMRCL or Google. <a href="/">Home</a> &middot; <a href="/photo-rules">Photo rules</a></p>
 </footer>
+<script src="/pv.js" defer></script>
 </body>
 </html>
 """
@@ -327,7 +359,7 @@ def main():
     write("pages.css", PAGES_CSS)
 
     # clean the folders this script owns, so a rerun leaves no stale pages
-    for d in [c[0] for c in CATS.values()] + ["area", "place"]:
+    for d in [c[0] for c in CATS.values()] + ["area", "place", "best"]:
         shutil.rmtree(DOCS / d, ignore_errors=True)
 
     by_area = defaultdict(list)
@@ -344,8 +376,8 @@ def main():
             area_pages[name] = s
     centers = {n: (sum(p["lat"] for p in ps) / len(ps), sum(p["lng"] for p in ps) / len(ps)) for n, ps in by_area.items()}
 
-    GENERIC = re.compile(r"^(public toilets?|bbmp park|park|playground|toilet|bda park)", re.I)
-    NOT_PUBLIC = re.compile(r"just ?books|universit|college|institute|school|club|wipro|iim", re.I)
+    GENERIC = re.compile(r"^(public toilets?|bbmp park|park|playground|toilet|bda park)\b", re.I)
+    NOT_PUBLIC = re.compile(r"just ?books|universit|college|institute|school|club|wipro|\biim", re.I)
 
     def indexable(p):
         # Thin pages stay noindex: generic names ("Public toilet, X"), toilets without timings,
@@ -450,7 +482,8 @@ def main():
                 + f'<p><a class="btn" href="/">Open the {esc(sing)} map</a></p>'
                 + topl + f"<h2>All {esc(plural.lower())} by area</h2>" + "".join(sections)
                 + '<h2>Other kinds of place</h2><ul class="chips">' + others + "</ul>")
-        write(f"{slug}/index.html", shell(head(title, desc, SITE + cat_url(c), css_ver, jsonld=[crumbs_ld(crumbs)]), body, built))
+        write(f"{slug}/index.html", shell(head(title, desc, SITE + cat_url(c), css_ver, jsonld=[crumbs_ld(crumbs)]), body, built,
+                                          share=(f"{plural} in Bengaluru with timings:", cat_url(c))))
         stats["cat"] += 1
         sitemap.append((cat_url(c), built))
 
@@ -492,7 +525,8 @@ def main():
         body = (crumbs_html(crumbs) + f"<h1>{esc(kp)} in {esc(name)}, Bengaluru</h1>"
                 + "".join(f"<p>{x}</p>" for x in intro) + '<p><a class="btn" href="/">Open the map</a></p>'
                 + "".join(secs) + nl)
-        write(f"area/{slug}/index.html", shell(head(title, desc, SITE + area_url(name), css_ver, jsonld=[crumbs_ld(crumbs)]), body, built))
+        write(f"area/{slug}/index.html", shell(head(title, desc, SITE + area_url(name), css_ver, jsonld=[crumbs_ld(crumbs)]), body, built,
+                                               share=(f"Parks and public places in {name}, Bengaluru:", area_url(name))))
         stats["area"] += 1
         sitemap.append((area_url(name), built))
 
@@ -586,13 +620,128 @@ def main():
             ld["amenityFeature"] = [{"@type": "LocationFeatureSpecification", "name": f, "value": True} for f in p["feat"]]
         robots = None if p["_idx"] else "noindex,follow"
         write(f"place/{p['_slug']}/index.html",
-              shell(head(title, desc, SITE + place_url(p), css_ver, robots=robots, jsonld=[crumbs_ld(crumbs), ld]), body, built))
+              shell(head(title, desc, SITE + place_url(p), css_ver, robots=robots, jsonld=[crumbs_ld(crumbs), ld]), body, built,
+                    share=(f"{name}{', ' + area if area else ''}: timings and directions", place_url(p))))
         stats["place"] += 1
         if p["_idx"]:
             stats["idx"] += 1
             sitemap.append((place_url(p), built))
         else:
             stats["noidx"] += 1
+
+
+    # ===== "best" list pages: answers to real searches, built from the same data =====
+    WEEKDAYS = [1, 2, 3, 4, 5]
+
+    def open_at(p, day, t):
+        dr = day_ranges(p)
+        return bool(dr) and any(a <= t < b for a, b in dr[day])
+
+    def has_feat(p, f):
+        return f in (p.get("feat") or [])
+
+    # Lists show only places a stranger can walk into, with a clean name: no apartment or campus parks,
+    # no generic names (same rule as indexable()), no long BBMP work-order names.
+    PRIVATE = re.compile(r"tower|apartment|common area|infosys|wipro|sobha|prestige|brigade|student|courts|campus|arena|park ?#|villa", re.I)
+    MESSY = re.compile(r"^(mainten|development|improvement|sfs|\d)|\b(opp|house|cross|main)\b.*\b(park|in)\b", re.I)
+
+    def listable(p):
+        return p["_idx"] and not GENERIC.match(p["name"].strip()) and not PRIVATE.search(p["name"]) and not MESSY.search(p["name"]) and len(p["name"]) <= 50
+
+    parks_ = [p for p in places if p["cat"] == "park" and listable(p)]
+    LISTS = [
+        ("parks-open-late-night", "Parks open late at night in Bengaluru",
+         "Parks in Bengaluru that are still open at 9 pm on weekdays, for an evening walk after work.",
+         [p for p in parks_ if all(open_at(p, d, "21:00") for d in WEEKDAYS)], "Open at 9 pm on weekdays."),
+        ("parks-open-early-morning", "Parks open early morning in Bengaluru",
+         "Parks in Bengaluru that are open by 5:30 am on weekdays, for a morning walk or run.",
+         [p for p in parks_ if all(open_at(p, d, "05:30") for d in WEEKDAYS)], "Open by 5:30 am on weekdays."),
+        ("parks-open-in-the-afternoon", "Parks open in the afternoon in Bengaluru",
+         "Many Bengaluru parks close between about 10 am and 4 pm. These parks are open at 2 pm on weekdays.",
+         [p for p in parks_ if all(open_at(p, d, "14:00") for d in WEEKDAYS)], "Open at 2 pm on weekdays."),
+        ("parks-with-open-gym", "Parks with an open gym in Bengaluru",
+         "Parks in Bengaluru with free outdoor gym equipment, listed by area.",
+         [p for p in parks_ if has_feat(p, "Open gym")], "Has an open gym."),
+        ("parks-with-play-area", "Parks with a kids play area in Bengaluru",
+         "Parks in Bengaluru with a children's play area, listed by area, with timings where we know them.",
+         [p for p in parks_ if has_feat(p, "Play area")], "Has a play area."),
+        ("parks-with-toilets", "Parks with toilets in Bengaluru",
+         "Parks in Bengaluru that have a toilet inside, listed by area.",
+         [p for p in parks_ if has_feat(p, "Toilet")], "Has a toilet."),
+        ("lakes-for-birdwatching", "Lakes for birdwatching in Bengaluru",
+         "Bengaluru lakes where people have photographed birds on iNaturalist, with the birds seen at each lake.",
+         [p for p in places if p["cat"] == "lake" and p.get("birds") and listable(p)], "Birds photographed here on iNaturalist."),
+        ("biggest-parks", "Biggest parks in Bengaluru",
+         "The 50 largest parks on the BBMP park list, by listed area, from the biggest down.",
+         sorted([p for p in parks_ if p.get("sqm") and p.get("src") in ("bbmp", "bbmp16")], key=lambda p: (-p["sqm"], p["name"]))[:50],
+         "The 50 largest parks on the BBMP list."),
+        ("libraries-open-on-sunday", "Libraries open on Sunday in Bengaluru",
+         "Public libraries in Bengaluru that are open on Sunday morning, listed by area.",
+         [p for p in places if p["cat"] == "library" and listable(p) and open_at(p, 0, "11:00")], "Open on Sunday at 11 am."),
+        ("public-toilets-open-24-hours", "Public toilets open 24 hours in Bengaluru",
+         "Public toilets in Bengaluru that are open all night, every day, listed by area.",
+         [p for p in places if p["cat"] == "toilet" and not PRIVATE.search(p["name"]) and all(open_at(p, d, "02:00") for d in range(7))], "Open all night, every day."),
+    ]
+
+    def list_row(p):
+        extra = ""
+        if p.get("sqm") and p.get("src") in ("bbmp", "bbmp16"):
+            extra = f' <span class="tags">about {num(int(p["sqm"]))} m²</span>'
+        if p.get("birds"):
+            bn = sorted({b["name"] for b in p["birds"] if b.get("name")})[:6]
+            if bn:
+                extra += f' <span class="tags">Birds: {esc(", ".join(bn))}</span>'
+        cls = "hrs" if (has_times(p) or p.get("hoursText")) else "hrs none"
+        sub = f' <span class="tags">{esc(p["_area"])}</span>' if p.get("_area") else ""
+        return f'<li><a href="{place_url(p)}">{esc(p["name"])}</a>{sub}<span class="{cls}">{esc(hours_summary(p))}</span>{extra}</li>'
+
+    list_links = []
+    for slug, h1, lead, ps, rule in LISTS:
+        seen_n, uniq = set(), []
+        for p in ps:   # the BBMP lists repeat some parks: keep one per name and area
+            key = (akey(p["name"]), p["_area"])
+            if key not in seen_n:
+                seen_n.add(key)
+                uniq.append(p)
+        ps = uniq
+        if len(ps) < 8:
+            continue
+        url = f"/best/{slug}/"
+        areas = Counter(p["_area"] for p in ps if p["_area"])
+        top = [a for a, _ in sorted(areas.items(), key=lambda kv: (-kv[1], kv[0]))[:3]]
+        title = pick_title([f"{h1} ({len(ps)}) | PUBLIK", f"{h1} | PUBLIK"])
+        desc = fit_desc([f"{len(ps)} places. {lead}", ("Most are in " + ", ".join(top) + ".") if top else ""])
+        if slug == "biggest-parks":
+            secs = '<ol class="rows">' + "".join(list_row(p) for p in ps) + "</ol>"
+        else:
+            groups = defaultdict(list)
+            for p in ps:
+                groups[p["_area"] or ""].append(p)
+            keys = sorted((k for k in groups if k), key=lambda s: (-len(groups[s]), s.lower())) + ([""] if "" in groups else [])
+            def head_of(k):
+                if not k:
+                    return "Area not listed"
+                return f'<a href="{area_url(k)}">{esc(k)}</a>' if k in area_pages else esc(k)
+            secs = "".join(
+                f'<section><h2>{head_of(k)} <span class="n">{len(groups[k])}</span></h2><ul class="rows">'
+                + "".join(list_row(p) for p in groups[k]) + "</ul></section>"
+                for k in keys)
+        others = "".join(f'<li><a href="/best/{o[0]}/">{esc(o[1].replace(" in Bengaluru", ""))}</a></li>' for o in LISTS if o[0] != slug)
+        crumbs = [("Home", "/"), (h1, url)]
+        body = (crumbs_html(crumbs) + f"<h1>{esc(h1)}</h1>"
+                + f"<p>{esc(lead)} PUBLIK lists <b>{len(ps)}</b>. {esc(rule)}"
+                + (" The areas with the most are " + esc(", ".join(top)) + "." if top else "") + "</p>"
+                + '<p class="muted">Timings come from public lists and can change. Check at the place before you travel.</p>'
+                + '<p><a class="btn" href="/">Open the map</a></p>' + secs
+                + '<h2>More lists</h2><ul class="chips">' + others + "</ul>")
+        ld_list = {"@context": "https://schema.org", "@type": "ItemList", "name": h1, "numberOfItems": len(ps),
+                   "itemListElement": [{"@type": "ListItem", "position": i + 1, "url": SITE + place_url(p), "name": p["name"]}
+                                       for i, p in enumerate(ps[:100])]}
+        write(f"best/{slug}/index.html", shell(head(title, desc, SITE + url, css_ver, jsonld=[crumbs_ld(crumbs), ld_list]), body, built,
+                                              share=(h1 + ":", url)))
+        stats["list"] += 1
+        sitemap.append((url, built))
+        list_links.append((h1, url, len(ps)))
 
     # ===== 404 page (no canonical, noindex) =====
     write("404.html", head("Page not found | PUBLIK", "This page is not on PUBLIK. The link may be old or mistyped. Go to the home page to find parks, lakes, libraries and public toilets in Bengaluru.",
@@ -612,7 +761,9 @@ def main():
     # ===== link block on the home page =====
     top_areas = sorted(area_pages, key=lambda n: (-len(by_area[n]), n))[:TOP_AREAS_HOME]
     block = ('<!-- seo-links:start (written by scripts/build_pages.py) -->\n<nav class="browse" aria-label="Browse PUBLIK pages">\n'
-             "<h2>Browse by kind of place</h2>\n<ul>"
+             "<h2>Popular lists</h2>\n<ul>"
+             + "".join(f'<li><a href="{u}">{esc(h)}</a></li>' for h, u, _ in list_links)
+             + "</ul>\n<h2>Browse by kind of place</h2>\n<ul>"
              + "".join(f'<li><a href="{cat_url(c)}">{esc(CATS[c][2])} in Bengaluru</a></li>' for c in CAT_ORDER)
              + "</ul>\n<h2>Browse by area</h2>\n<ul>"
              + "".join(f'<li><a href="{area_url(a)}">{esc(a)}</a></li>' for a in top_areas)
@@ -642,6 +793,8 @@ def main():
         "## Pages", "", f"- [Home: the map, search and open-now status]({SITE}/)"]
     for c in CAT_ORDER:
         ll.append(f"- [{CATS[c][2]} in Bengaluru]({SITE}{cat_url(c)}): {cat_info[c]['n']} places, {cat_info[c]['t']} with timings")
+    ll += ["", "## Lists", ""]
+    ll += [f"- [{h}]({SITE}{u}): {n} places" for h, u, n in list_links]
     ll += ["", "## Areas (largest first)", ""]
     ll += [f"- [{a}]({SITE}{area_url(a)}): {len(by_area[a])} places" for a in top_areas]
     ll += ["", "## Places", "",
@@ -651,8 +804,8 @@ def main():
     write("llms.txt", "\n".join(ll))
 
     print(f"places={len(places)} areas_total={len(by_area)} category_pages={stats['cat']} area_pages={stats['area']} "
-          f"place_pages={stats['place']} indexable={stats['idx']} noindex={stats['noidx']}")
-    print(f"sitemap_urls={len(sitemap)} total_html_pages={stats['cat'] + stats['area'] + stats['place'] + 1}")
+          f"list_pages={stats['list']} place_pages={stats['place']} indexable={stats['idx']} noindex={stats['noidx']}")
+    print(f"sitemap_urls={len(sitemap)} total_html_pages={stats['cat'] + stats['area'] + stats['list'] + stats['place'] + 1}")
 
 
 PAGES_CSS = """/* PUBLIK static pages. System fonts, same colors as style.css. */
@@ -691,6 +844,16 @@ p{margin:0 0 .8em}
 .hours{list-style:none;margin:0 0 .8em;padding:12px;background:var(--paper);border:1px solid var(--rule);border-radius:12px}
 .hours li{padding:2px 0}
 code{background:var(--wash);padding:1px 5px;border-radius:5px}
+.share{margin:1.6em 0 0}
+.btn.wa{display:inline-flex;align-items:center;gap:8px;background:#1f7a3f;color:#fff}
+.nd{display:flex;gap:12px;align-items:flex-start;margin:1.6em 0 0;padding:14px;background:var(--paper);border:1px solid var(--rule);border-radius:12px}
+.nd img{border-radius:11px;flex:none}
+.nd h2{margin:0 0 .2em;font-size:1.05rem}
+.nd p{margin:0 0 .4em;font-size:.92rem}
+.nd .nd-tag{color:var(--muted);font-size:.78rem;margin:0}
+.nd-links{display:flex;flex-wrap:wrap;gap:8px}
+.nd-links a{padding:6px 12px;border-radius:999px;border:1px solid var(--canopy);text-decoration:none;font-weight:600;font-size:.88rem}
+ol.rows{padding-left:0;list-style-position:inside}
 footer.site{color:var(--muted);font-size:.82rem;padding-top:8px;padding-bottom:40px}
 footer.site p{margin:0 0 6px}
 """

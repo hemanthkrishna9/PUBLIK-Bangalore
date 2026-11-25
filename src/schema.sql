@@ -56,3 +56,9 @@ CREATE TABLE IF NOT EXISTS photo_reports (
   PRIMARY KEY (photo, who)
 );
 CREATE INDEX IF NOT EXISTS photo_reports_who_ts ON photo_reports (who, ts);
+
+-- Page counts per IST day (see postPageview in worker.js). Counts only: no IP, no visitor key, no page address.
+CREATE TABLE IF NOT EXISTS pageviews (
+  day TEXT NOT NULL, kind TEXT NOT NULL, ev TEXT NOT NULL, src TEXT NOT NULL, country TEXT NOT NULL, n INTEGER NOT NULL,
+  PRIMARY KEY (day, kind, ev, src, country)
+);

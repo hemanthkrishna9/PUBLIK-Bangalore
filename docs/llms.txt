@@ -13,11 +13,24 @@ Timings come from the BBMP park list (via OpenCity), OpenStreetMap and Google Ma
 - [Libraries in Bengaluru](https://publik.nxtduo.com/libraries/): 96 places, 57 with timings
 - [Public toilets in Bengaluru](https://publik.nxtduo.com/public-toilets/): 453 places, 164 with timings
 
+## Lists
+
+- [Parks open late at night in Bengaluru](https://publik.nxtduo.com/best/parks-open-late-night/): 58 places
+- [Parks open early morning in Bengaluru](https://publik.nxtduo.com/best/parks-open-early-morning/): 235 places
+- [Parks open in the afternoon in Bengaluru](https://publik.nxtduo.com/best/parks-open-in-the-afternoon/): 185 places
+- [Parks with an open gym in Bengaluru](https://publik.nxtduo.com/best/parks-with-open-gym/): 58 places
+- [Parks with a kids play area in Bengaluru](https://publik.nxtduo.com/best/parks-with-play-area/): 59 places
+- [Parks with toilets in Bengaluru](https://publik.nxtduo.com/best/parks-with-toilets/): 20 places
+- [Lakes for birdwatching in Bengaluru](https://publik.nxtduo.com/best/lakes-for-birdwatching/): 36 places
+- [Biggest parks in Bengaluru](https://publik.nxtduo.com/best/biggest-parks/): 45 places
+- [Libraries open on Sunday in Bengaluru](https://publik.nxtduo.com/best/libraries-open-on-sunday/): 38 places
+- [Public toilets open 24 hours in Bengaluru](https://publik.nxtduo.com/best/public-toilets-open-24-hours/): 21 places
+
 ## Areas (largest first)
 
+- [Yelahanka New Town](https://publik.nxtduo.com/area/yelahanka-new-town/): 42 places
 - [Jayanagar](https://publik.nxtduo.com/area/jayanagar/): 38 places
 - [Koramangala](https://publik.nxtduo.com/area/koramangala/): 32 places
-- [Someshwara](https://publik.nxtduo.com/area/someshwara/): 32 places
 - [Rajajinagar](https://publik.nxtduo.com/area/rajajinagar/): 25 places
 - [Jnana Bharathi](https://publik.nxtduo.com/area/jnana-bharathi/): 24 places
 - [Chokkasandra](https://publik.nxtduo.com/area/chokkasandra/): 20 places
@@ -39,16 +52,16 @@ Timings come from the BBMP park list (via OpenCity), OpenStreetMap and Google Ma
 - [Hemmigepura](https://publik.nxtduo.com/area/hemmigepura/): 12 places
 - [Kenchenahalli](https://publik.nxtduo.com/area/kenchenahalli/): 12 places
 - [Lakkasandra](https://publik.nxtduo.com/area/lakkasandra/): 11 places
-- [Yelahanka Newtown](https://publik.nxtduo.com/area/yelahanka-newtown/): 10 places
 - [Dubasi Palya](https://publik.nxtduo.com/area/dubasi-palya/): 9 places
 - [Malleswaram](https://publik.nxtduo.com/area/malleswaram/): 9 places
 - [Nagapura](https://publik.nxtduo.com/area/nagapura/): 9 places
 - [Nandini Layout](https://publik.nxtduo.com/area/nandini-layout/): 9 places
 - [Sanjaya Nagara](https://publik.nxtduo.com/area/sanjaya-nagara/): 9 places
+- [Shankar Matt](https://publik.nxtduo.com/area/shankar-matt/): 9 places
 
 ## Places
 
-Each place has a page at https://publik.nxtduo.com/place/<name-area>/ with timings, features, directions and nearby places. The sitemap at https://publik.nxtduo.com/sitemap.xml lists the 806 place pages that have timings or features.
+Each place has a page at https://publik.nxtduo.com/place/<name-area>/ with timings, features, directions and nearby places. The sitemap at https://publik.nxtduo.com/sitemap.xml lists the 630 place pages that have timings or features.
 
 ## Credits
 

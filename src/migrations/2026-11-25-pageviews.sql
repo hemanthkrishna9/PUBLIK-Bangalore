@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS pageviews (day TEXT NOT NULL, kind TEXT NOT NULL, ev TEXT NOT NULL, src TEXT NOT NULL, country TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, kind, ev, src, country));

@@ -683,6 +683,26 @@ async function cleanup(env) {
   console.log(JSON.stringify({ step: "cleanup", kv_deletes: KV_DELETES_PER_RUN - budget, removed_rows: rows }));
 }
 
+// Page counts. A tiny script on every page sends one beacon per page view. Bots that do not run scripts
+// are not counted. Stored per IST day only as counts: kind of page, event, country, where the visit came from.
+// No IP, no visitor key, no page address.
+const PV_KINDS = new Set(["home", "place", "area", "cat", "list", "techies", "other"]);
+const PV_EVENTS = new Set(["view", "nxtdue_ios", "nxtdue_android", "share_wa", "join_tg"]);
+const PV_FROM = new Set(["google", "bing", "other_search", "whatsapp", "reddit", "instagram", "telegram", "social", "publik", "direct", "other"]);
+async function postPageview(req, env) {
+  let b = {};
+  try { b = JSON.parse((await req.text()).slice(0, 300)); } catch { return new Response(null, { status: 204 }); }
+  const kind = PV_KINDS.has(b.k) ? b.k : "other";
+  const ev = PV_EVENTS.has(b.e) ? b.e : "view";
+  const from = PV_FROM.has(b.f) ? b.f : "other";
+  const country = /^[A-Z]{2}$/.test(req.cf?.country || "") ? req.cf.country : "XX";
+  const day = new Date(Date.now() + 5.5 * HOUR).toISOString().slice(0, 10);
+  await env.DB.prepare(
+    "INSERT INTO pageviews (day, kind, ev, src, country, n) VALUES (?, ?, ?, ?, ?, 1) " +
+    "ON CONFLICT (day, kind, ev, src, country) DO UPDATE SET n = n + 1").bind(day, kind, ev, from, country).run();
+  return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+}
+
 export default {
   // Cron trigger: see wrangler.jsonc.
   async scheduled(event, env, ctx) {
@@ -692,9 +712,10 @@ export default {
     const url = new URL(req.url);
     try {
       // Cross-site pages must not post for a visitor. Admin routes use the bearer token instead.
-      if (req.method === "POST" && /^\/api\/(report|visit|photo|photo-report)$/.test(url.pathname) && !sameSite(req, env, url.pathname === "/api/report" || url.pathname === "/api/visit")) {
+      if (req.method === "POST" && /^\/api\/(report|visit|photo|photo-report|pv)$/.test(url.pathname) && !sameSite(req, env, url.pathname === "/api/report" || url.pathname === "/api/visit" || url.pathname === "/api/pv")) {
         return json({ error: "Not allowed." }, 403);
       }
+      if (url.pathname === "/api/pv" && req.method === "POST") return await postPageview(req, env);
       if (url.pathname === "/api/reports" && req.method === "GET") return await getReports(url, env);
       if (url.pathname === "/api/report" && req.method === "POST") return await postReport(req, env, ctx);
       if (url.pathname === "/api/visits" && req.method === "GET") return await getVisits(url, env);
