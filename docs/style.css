@@ -554,6 +554,9 @@ footer p { margin: 0 0 6px; }
 .nd-h { margin: 2px 0 0; font-family: var(--display); font-size: 1.25rem; line-height: 1.1; font-weight: 800; color: var(--ink); }
 .nd-sub { margin: 4px 0 0; font-size: .88rem; line-height: 1.35; color: var(--muted); }
 .nd-store { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 14px; border-radius: var(--radius-pill); background: var(--ink); color: var(--paper); font-size: .85rem; font-weight: 700; text-decoration: none; }
+.nd-stores { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.nd-stores .nd-store { margin-top: 0; }
+.nd-store[hidden] { display: none; }
 .nd-store:hover { opacity: .88; }
 .nd-store:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 @keyframes nd-in { from { opacity: 0; transform: translateY(-12px); } }
@@ -567,6 +570,7 @@ footer p { margin: 0 0 6px; }
   .nd-body { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1; padding-right: 26px; }
   .nd-h { margin: 0; font-size: 1rem; }
   .nd-h::after { content: "Never miss a renewal"; display: block; font-family: var(--text); font-size: .75rem; font-weight: 400; color: var(--muted); }
+  .nd-stores { margin: 0; flex-wrap: nowrap; gap: 6px; }
   .nd-store { margin: 0; padding: 7px 12px; font-size: .8rem; white-space: nowrap; }
   .nd-x { top: 50%; transform: translateY(-50%); }
   html:not([data-nd="off"]) footer { padding-bottom: 90px; }

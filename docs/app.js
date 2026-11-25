@@ -784,6 +784,10 @@
   // Floating NxtDue card (a sister app). Closing it hides it for this visit only; it shows again on the next visit.
   const nd = $("nd");
   if (nd) {
+    // On a phone, show only the store for that phone. Desktops and others see both.
+    const ua = navigator.userAgent || "";
+    if (/Android/i.test(ua)) $("nd-ios").hidden = true;
+    else if (/iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) $("nd-play").hidden = true;
     $("nd-x").addEventListener("click", () => {
       nd.hidden = true;
       try { sessionStorage.setItem("publik_nd_v1", "1"); } catch {}
