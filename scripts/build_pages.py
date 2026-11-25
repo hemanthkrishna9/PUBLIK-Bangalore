@@ -377,7 +377,7 @@ def main():
     centers = {n: (sum(p["lat"] for p in ps) / len(ps), sum(p["lng"] for p in ps) / len(ps)) for n, ps in by_area.items()}
 
     GENERIC = re.compile(r"^(public toilets?|bbmp park|park|playground|toilet|bda park)\b", re.I)
-    NOT_PUBLIC = re.compile(r"just ?books|universit|college|institute|school|club|wipro|\biim", re.I)
+    NOT_PUBLIC = re.compile(r"just ?books|nimhans|iisc|hospital|universit|college|institute|school|club|wipro|\biim", re.I)
 
     def indexable(p):
         # Thin pages stay noindex: generic names ("Public toilet, X"), toilets without timings,

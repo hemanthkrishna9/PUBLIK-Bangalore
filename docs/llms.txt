@@ -16,14 +16,14 @@ Timings come from the BBMP park list (via OpenCity), OpenStreetMap and Google Ma
 ## Lists
 
 - [Parks open late at night in Bengaluru](https://publik.nxtduo.com/best/parks-open-late-night/): 58 places
-- [Parks open early morning in Bengaluru](https://publik.nxtduo.com/best/parks-open-early-morning/): 235 places
-- [Parks open in the afternoon in Bengaluru](https://publik.nxtduo.com/best/parks-open-in-the-afternoon/): 185 places
+- [Parks open early morning in Bengaluru](https://publik.nxtduo.com/best/parks-open-early-morning/): 234 places
+- [Parks open in the afternoon in Bengaluru](https://publik.nxtduo.com/best/parks-open-in-the-afternoon/): 184 places
 - [Parks with an open gym in Bengaluru](https://publik.nxtduo.com/best/parks-with-open-gym/): 58 places
 - [Parks with a kids play area in Bengaluru](https://publik.nxtduo.com/best/parks-with-play-area/): 59 places
 - [Parks with toilets in Bengaluru](https://publik.nxtduo.com/best/parks-with-toilets/): 20 places
 - [Lakes for birdwatching in Bengaluru](https://publik.nxtduo.com/best/lakes-for-birdwatching/): 36 places
 - [Biggest parks in Bengaluru](https://publik.nxtduo.com/best/biggest-parks/): 45 places
-- [Libraries open on Sunday in Bengaluru](https://publik.nxtduo.com/best/libraries-open-on-sunday/): 38 places
+- [Libraries open on Sunday in Bengaluru](https://publik.nxtduo.com/best/libraries-open-on-sunday/): 37 places
 - [Public toilets open 24 hours in Bengaluru](https://publik.nxtduo.com/best/public-toilets-open-24-hours/): 21 places
 
 ## Areas (largest first)
@@ -61,7 +61,7 @@ Timings come from the BBMP park list (via OpenCity), OpenStreetMap and Google Ma
 
 ## Places
 
-Each place has a page at https://publik.nxtduo.com/place/<name-area>/ with timings, features, directions and nearby places. The sitemap at https://publik.nxtduo.com/sitemap.xml lists the 630 place pages that have timings or features.
+Each place has a page at https://publik.nxtduo.com/place/<name-area>/ with timings, features, directions and nearby places. The sitemap at https://publik.nxtduo.com/sitemap.xml lists the 627 place pages that have timings or features.
 
 ## Credits
 
